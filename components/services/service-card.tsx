@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Clock, Euro, ChevronDown, ChevronUp } from 'lucide-react'
-import { Service, ServiceVariant } from '@/lib/services-data'
+import { Service } from '@/lib/services-data'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 

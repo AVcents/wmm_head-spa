@@ -11,7 +11,6 @@ import {
   categories,
   durationFilters,
   priceFilters,
-  Service,
 } from '@/lib/services-data'
 import { Filter } from 'lucide-react'
 

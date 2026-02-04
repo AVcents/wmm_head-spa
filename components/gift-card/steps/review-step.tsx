@@ -137,7 +137,7 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
             )}
             {data.personalMessage && (
               <p className="text-sm text-foreground-secondary italic bg-surface p-4 rounded-lg border border-border">
-                "{data.personalMessage}"
+                &ldquo;{data.personalMessage}&rdquo;
               </p>
             )}
           </div>

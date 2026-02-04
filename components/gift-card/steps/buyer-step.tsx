@@ -53,17 +53,17 @@ export function BuyerStep({ data, onNext, onBack }: BuyerStepProps) {
     const newErrors: Record<string, string> = {}
 
     if (!formData.buyerFirstName.trim()) {
-      newErrors.buyerFirstName = 'Le prénom est requis'
+      newErrors['buyerFirstName'] = 'Le prénom est requis'
     }
 
     if (!formData.buyerLastName.trim()) {
-      newErrors.buyerLastName = 'Le nom est requis'
+      newErrors['buyerLastName'] = 'Le nom est requis'
     }
 
     if (!formData.buyerEmail.trim()) {
-      newErrors.buyerEmail = 'L\'email est requis'
+      newErrors['buyerEmail'] = 'L\'email est requis'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.buyerEmail)) {
-      newErrors.buyerEmail = 'Email invalide'
+      newErrors['buyerEmail'] = 'Email invalide'
     }
 
     // Validate shipping address only for physical delivery
@@ -114,10 +114,10 @@ export function BuyerStep({ data, onNext, onBack }: BuyerStepProps) {
               value={formData.buyerFirstName}
               onChange={(e) => handleChange('buyerFirstName', e.target.value)}
               placeholder="Jean"
-              className={errors.buyerFirstName ? 'border-red-500' : ''}
+              className={errors['buyerFirstName'] ? 'border-red-500' : ''}
             />
-            {errors.buyerFirstName && (
-              <p className="text-sm text-red-500">{errors.buyerFirstName}</p>
+            {errors['buyerFirstName'] && (
+              <p className="text-sm text-red-500">{errors['buyerFirstName']}</p>
             )}
           </div>
 
@@ -130,10 +130,10 @@ export function BuyerStep({ data, onNext, onBack }: BuyerStepProps) {
               value={formData.buyerLastName}
               onChange={(e) => handleChange('buyerLastName', e.target.value)}
               placeholder="Martin"
-              className={errors.buyerLastName ? 'border-red-500' : ''}
+              className={errors['buyerLastName'] ? 'border-red-500' : ''}
             />
-            {errors.buyerLastName && (
-              <p className="text-sm text-red-500">{errors.buyerLastName}</p>
+            {errors['buyerLastName'] && (
+              <p className="text-sm text-red-500">{errors['buyerLastName']}</p>
             )}
           </div>
         </div>
@@ -148,10 +148,10 @@ export function BuyerStep({ data, onNext, onBack }: BuyerStepProps) {
             value={formData.buyerEmail}
             onChange={(e) => handleChange('buyerEmail', e.target.value)}
             placeholder="jean.martin@example.com"
-            className={errors.buyerEmail ? 'border-red-500' : ''}
+            className={errors['buyerEmail'] ? 'border-red-500' : ''}
           />
-          {errors.buyerEmail && (
-            <p className="text-sm text-red-500">{errors.buyerEmail}</p>
+          {errors['buyerEmail'] && (
+            <p className="text-sm text-red-500">{errors['buyerEmail']}</p>
           )}
           <p className="text-sm text-foreground-secondary">
             Vous recevrez la confirmation de commande à cette adresse

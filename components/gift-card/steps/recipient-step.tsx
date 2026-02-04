@@ -35,17 +35,17 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
     const newErrors: Record<string, string> = {}
 
     if (!formData.recipientFirstName.trim()) {
-      newErrors.recipientFirstName = 'Le prénom est requis'
+      newErrors['recipientFirstName'] = 'Le prénom est requis'
     }
 
     if (!formData.recipientLastName.trim()) {
-      newErrors.recipientLastName = 'Le nom est requis'
+      newErrors['recipientLastName'] = 'Le nom est requis'
     }
 
     if (!formData.recipientEmail.trim()) {
-      newErrors.recipientEmail = 'L\'email est requis'
+      newErrors['recipientEmail'] = 'L\'email est requis'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.recipientEmail)) {
-      newErrors.recipientEmail = 'Email invalide'
+      newErrors['recipientEmail'] = 'Email invalide'
     }
 
     setErrors(newErrors)
@@ -80,10 +80,10 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
               value={formData.recipientFirstName}
               onChange={(e) => handleChange('recipientFirstName', e.target.value)}
               placeholder="Marie"
-              className={errors.recipientFirstName ? 'border-red-500' : ''}
+              className={errors['recipientFirstName'] ? 'border-red-500' : ''}
             />
-            {errors.recipientFirstName && (
-              <p className="text-sm text-red-500">{errors.recipientFirstName}</p>
+            {errors['recipientFirstName'] && (
+              <p className="text-sm text-red-500">{errors['recipientFirstName']}</p>
             )}
           </div>
 
@@ -96,10 +96,10 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
               value={formData.recipientLastName}
               onChange={(e) => handleChange('recipientLastName', e.target.value)}
               placeholder="Dupont"
-              className={errors.recipientLastName ? 'border-red-500' : ''}
+              className={errors['recipientLastName'] ? 'border-red-500' : ''}
             />
-            {errors.recipientLastName && (
-              <p className="text-sm text-red-500">{errors.recipientLastName}</p>
+            {errors['recipientLastName'] && (
+              <p className="text-sm text-red-500">{errors['recipientLastName']}</p>
             )}
           </div>
         </div>
@@ -114,10 +114,10 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
             value={formData.recipientEmail}
             onChange={(e) => handleChange('recipientEmail', e.target.value)}
             placeholder="marie.dupont@example.com"
-            className={errors.recipientEmail ? 'border-red-500' : ''}
+            className={errors['recipientEmail'] ? 'border-red-500' : ''}
           />
-          {errors.recipientEmail && (
-            <p className="text-sm text-red-500">{errors.recipientEmail}</p>
+          {errors['recipientEmail'] && (
+            <p className="text-sm text-red-500">{errors['recipientEmail']}</p>
           )}
           <p className="text-sm text-foreground-secondary">
             Le bon cadeau sera envoyé à cette adresse email

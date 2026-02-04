@@ -17,7 +17,7 @@ export interface GiftCardData {
   serviceId?: string
   serviceName?: string
   serviceDuration?: number
-  hairLength?: 'courts' | 'mi-longs' | 'longs'
+  hairLength?: 'courts' | 'mi-longs' | 'longs' | 'rases' | 'enfant' | 'body'
   hairLengthLabel?: string
   amount?: number
 

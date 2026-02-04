@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary - Vert Sauge */
+  --color-primary-50: #e8f5ea;
+  --color-primary-100: #d0ead4;
+  --color-primary-200: #acd7ba;
+  --color-primary-300: #8bc0a2;
+  --color-primary-400: #6ba88a;
+  --color-primary-500: #4d9172;
+  --color-primary-600: #417a63;
+  --color-primary-700: #376754;
+  --color-primary-800: #2d5445;
+  --color-primary-900: #234136;
+  --color-primary-950: #1a2e27;
+  --color-primary: #4d9172;
+
+  /* Secondary - Beige Doré */
+  --color-secondary-50: #f7ede8;
+  --color-secondary-100: #eedbd3;
+  --color-secondary-200: #dcc6b7;
+  --color-secondary-300: #cab29a;
+  --color-secondary-400: #b89e7d;
+  --color-secondary-500: #a68a60;
+  --color-secondary-600: #8e7652;
+  --color-secondary-700: #766244;
+  --color-secondary-800: #5e4e36;
+  --color-secondary-900: #463a28;
+  --color-secondary-950: #2e261a;
+  --color-secondary: #a68a60;
+
+  /* Accents */
+  --color-accent-earth: #c9735c;
+  --color-accent-mint: #7fc4a8;
+  --color-accent-rose: #e8b4ae;
+
+  /* Backgrounds */
+  --color-background: #fafaf8;
+  --color-background-secondary: #f5f3f0;
+  --color-surface: #ffffff;
+
+  /* Foreground (textes) */
+  --color-foreground: #1f2421;
+  --color-foreground-secondary: #4a524e;
+  --color-foreground-muted: #6b7671;
+  --color-foreground-subtle: #9ba39e;
+
+  /* Borders */
+  --color-border: #e5e3df;
+  --color-border-subtle: #f0eeea;
+
+  /* Ring (focus) */
+  --color-ring: #4d9172;
+
+  /* Utilities */
+  --color-success: #5ba88a;
+  --color-warning: #e8a54c;
+  --color-error: #d47566;
+  --color-info: #6b9eb5;
+
+  /* Radius */
+  --radius: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+}
+
+.dark {
+  /* Backgrounds Dark */
+  --color-background: #1a1f1d;
+  --color-background-secondary: #232a27;
+  --color-surface: #2a3330;
+
+  /* Foreground Dark */
+  --color-foreground: #f2f4f3;
+  --color-foreground-secondary: #d1d7d4;
+  --color-foreground-muted: #a8b0ad;
+  --color-foreground-subtle: #7a827f;
+
+  /* Borders Dark */
+  --color-border: #3f4a46;
+  --color-border-subtle: #2f3834;
+
+  /* Ring Dark */
+  --color-ring: #6ba88a;
+
+  /* Accents (légèrement ajustés pour dark mode) */
+  --color-accent-earth: #e1a092;
+  --color-accent-mint: #a5d8c5;
+  --color-accent-rose: #f5d7d3;
+}
+
+body {
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-cormorant), Georgia, serif;
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}

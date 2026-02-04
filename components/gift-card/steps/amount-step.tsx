@@ -21,13 +21,22 @@ export function AmountStep({ data, onNext }: AmountStepProps) {
     if (selectedService) {
       const service = services.find((s) => s.id === selectedService)
       if (service) {
-        onNext({
+        const nextData: Partial<GiftCardData> = {
           serviceId: service.id,
           serviceName: service.name,
-          serviceDuration: service.duration,
-          // Si pas de variantes, définir le prix directement
-          amount: service.hasVariants ? undefined : service.price,
-        })
+        }
+
+        // Only add serviceDuration if it's defined
+        if (service.duration !== undefined) {
+          nextData.serviceDuration = service.duration
+        }
+
+        // Only add amount if service has no variants and price is defined
+        if (!service.hasVariants && service.price !== undefined) {
+          nextData.amount = service.price
+        }
+
+        onNext(nextData)
       }
     }
   }

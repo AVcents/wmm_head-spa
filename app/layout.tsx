@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, Cormorant } from 'next/font/google'
+import { Geist, Geist_Mono, Cormorant, Great_Vibes } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 
@@ -17,6 +17,12 @@ const cormorant = Cormorant({
   variable: '--font-cormorant',
   subsets: ['latin'],
   weight: ['400', '600', '700'],
+})
+
+const greatVibes = Great_Vibes({
+  variable: '--font-great-vibes',
+  subsets: ['latin'],
+  weight: ['400'],
 })
 
 export const metadata: Metadata = {
@@ -67,7 +73,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} ${greatVibes.variable} font-sans antialiased`}
       >
         <ThemeProvider defaultTheme="light" storageKey="kalm-headspa-theme">
           {children}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Header } from '@/components/shared/header'
 import { Footer } from '@/components/shared/footer'
 import { ServiceCard } from '@/components/services/service-card'
@@ -12,7 +13,7 @@ import {
   durationFilters,
   priceFilters,
 } from '@/lib/services-data'
-import { Filter } from 'lucide-react'
+import { Filter, Sparkles, Heart, TrendingUp, ArrowRight } from 'lucide-react'
 
 export default function PrestationsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -96,6 +97,59 @@ export default function PrestationsPage() {
               <p className="text-lg sm:text-xl text-foreground-secondary max-w-2xl mx-auto">
                 Découvrez nos soins Head Spa et massages pour votre bien-être
               </p>
+            </motion.div>
+
+            {/* Benefits Banner */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-primary-600 to-primary-700 p-8 md:p-12 mb-12"
+            >
+              <div className="relative z-10">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm mb-4">
+                      <Sparkles className="h-4 w-4 text-white" />
+                      <span className="text-sm font-medium text-white">
+                        Résultats scientifiquement prouvés
+                      </span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-4">
+                      Transformez votre bien-être en 60-90 minutes
+                    </h2>
+                    <p className="text-white/90 mb-6">
+                      Chaque séance de Head Spa augmente jusqu&apos;à <strong>120% la circulation sanguine</strong>,
+                      réduit le stress de <strong>40%</strong>, et active les gènes de croissance capillaire pendant <strong>72 heures</strong>.
+                    </p>
+                    <Link href="/bon-cadeau/commander">
+                      <Button size="lg" variant="outline" className="bg-white text-primary-600 hover:bg-white/90 border-0 group">
+                        Réserver maintenant
+                        <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                      <Heart className="h-8 w-8 text-white mb-2" />
+                      <div className="text-2xl font-bold text-white">-40%</div>
+                      <div className="text-sm text-white/80">Stress (cortisol)</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                      <TrendingUp className="h-8 w-8 text-white mb-2" />
+                      <div className="text-2xl font-bold text-white">+120%</div>
+                      <div className="text-sm text-white/80">Circulation</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 col-span-2">
+                      <Sparkles className="h-8 w-8 text-white mb-2" />
+                      <div className="text-2xl font-bold text-white">72 heures</div>
+                      <div className="text-sm text-white/80">D&apos;activation génétique capillaire</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1200&q=80')] opacity-10 bg-cover bg-center" />
             </motion.div>
 
             {/* Mobile Filter Toggle */}

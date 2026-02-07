@@ -1,62 +1,62 @@
 @import "tailwindcss";
 
 @theme {
-  /* Primary - Vert Sauge */
-  --color-primary-50: #e8f5ea;
-  --color-primary-100: #d0ead4;
-  --color-primary-200: #acd7ba;
-  --color-primary-300: #8bc0a2;
-  --color-primary-400: #6ba88a;
-  --color-primary-500: #4d9172;
-  --color-primary-600: #417a63;
-  --color-primary-700: #376754;
-  --color-primary-800: #2d5445;
-  --color-primary-900: #234136;
-  --color-primary-950: #1a2e27;
-  --color-primary: #4d9172;
+  /* Primary - Terracotta Élégant */
+  --color-primary-50: #faf4f1;
+  --color-primary-100: #f4e8e1;
+  --color-primary-200: #e8d0c3;
+  --color-primary-300: #dbb4a0;
+  --color-primary-400: #cd9479;
+  --color-primary-500: #c1876b;
+  --color-primary-600: #b36d52;
+  --color-primary-700: #965746;
+  --color-primary-800: #7a483d;
+  --color-primary-900: #643d35;
+  --color-primary-950: #35201b;
+  --color-primary: #c1876b;
 
-  /* Secondary - Beige Doré */
-  --color-secondary-50: #f7ede8;
-  --color-secondary-100: #eedbd3;
-  --color-secondary-200: #dcc6b7;
-  --color-secondary-300: #cab29a;
-  --color-secondary-400: #b89e7d;
-  --color-secondary-500: #a68a60;
-  --color-secondary-600: #8e7652;
-  --color-secondary-700: #766244;
-  --color-secondary-800: #5e4e36;
-  --color-secondary-900: #463a28;
-  --color-secondary-950: #2e261a;
-  --color-secondary: #a68a60;
+  /* Secondary - Sable Chaud */
+  --color-secondary-50: #f9f6f2;
+  --color-secondary-100: #f2ebe3;
+  --color-secondary-200: #e4d5c5;
+  --color-secondary-300: #d4b9a2;
+  --color-secondary-400: #c39c7d;
+  --color-secondary-500: #b68461;
+  --color-secondary-600: #a97155;
+  --color-secondary-700: #8d5c47;
+  --color-secondary-800: #724c3d;
+  --color-secondary-900: #5d3f33;
+  --color-secondary-950: #32211a;
+  --color-secondary: #b68461;
 
   /* Accents */
-  --color-accent-earth: #c9735c;
-  --color-accent-mint: #7fc4a8;
-  --color-accent-rose: #e8b4ae;
+  --color-accent-earth: #a0522d;
+  --color-accent-warm: #d4a373;
+  --color-accent-clay: #bc8a5f;
 
   /* Backgrounds */
-  --color-background: #fafaf8;
-  --color-background-secondary: #f5f3f0;
+  --color-background: #faf8f6;
+  --color-background-secondary: #f5f1ed;
   --color-surface: #ffffff;
 
   /* Foreground (textes) */
-  --color-foreground: #1f2421;
-  --color-foreground-secondary: #4a524e;
-  --color-foreground-muted: #6b7671;
-  --color-foreground-subtle: #9ba39e;
+  --color-foreground: #2d1f1a;
+  --color-foreground-secondary: #5a4a42;
+  --color-foreground-muted: #8a7a72;
+  --color-foreground-subtle: #b0a49c;
 
   /* Borders */
-  --color-border: #e5e3df;
-  --color-border-subtle: #f0eeea;
+  --color-border: #e8dfd8;
+  --color-border-subtle: #f0ebe6;
 
   /* Ring (focus) */
-  --color-ring: #4d9172;
+  --color-ring: #c1876b;
 
   /* Utilities */
-  --color-success: #5ba88a;
+  --color-success: #8b9e6f;
   --color-warning: #e8a54c;
-  --color-error: #d47566;
-  --color-info: #6b9eb5;
+  --color-error: #c2593d;
+  --color-info: #8b7d6b;
 
   /* Radius */
   --radius: 0.5rem;
@@ -67,27 +67,27 @@
 
 .dark {
   /* Backgrounds Dark */
-  --color-background: #1a1f1d;
-  --color-background-secondary: #232a27;
-  --color-surface: #2a3330;
+  --color-background: #1c1410;
+  --color-background-secondary: #261c16;
+  --color-surface: #2f241d;
 
   /* Foreground Dark */
-  --color-foreground: #f2f4f3;
-  --color-foreground-secondary: #d1d7d4;
-  --color-foreground-muted: #a8b0ad;
-  --color-foreground-subtle: #7a827f;
+  --color-foreground: #f5f1ed;
+  --color-foreground-secondary: #d9cfc7;
+  --color-foreground-muted: #b5a79d;
+  --color-foreground-subtle: #8a7d73;
 
   /* Borders Dark */
-  --color-border: #3f4a46;
-  --color-border-subtle: #2f3834;
+  --color-border: #473a31;
+  --color-border-subtle: #352a23;
 
   /* Ring Dark */
-  --color-ring: #6ba88a;
+  --color-ring: #cd9479;
 
   /* Accents (légèrement ajustés pour dark mode) */
-  --color-accent-earth: #e1a092;
-  --color-accent-mint: #a5d8c5;
-  --color-accent-rose: #f5d7d3;
+  --color-accent-earth: #b8754f;
+  --color-accent-warm: #e0b58a;
+  --color-accent-clay: #d4a373;
 }
 
 body {
@@ -101,6 +101,10 @@ h4,
 h5,
 h6 {
   font-family: var(--font-cormorant), Georgia, serif;
+}
+
+.font-script {
+  font-family: var(--font-great-vibes), cursive;
 }
 
 @keyframes blob {

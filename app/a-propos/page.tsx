@@ -3,7 +3,7 @@
 import { Header } from '@/components/shared/header'
 import { Footer } from '@/components/shared/footer'
 import { Button } from '@/components/ui/button'
-import { Sparkles, Heart, Award, Globe, Leaf, Users } from 'lucide-react'
+import { Sparkles, Heart, Leaf } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'

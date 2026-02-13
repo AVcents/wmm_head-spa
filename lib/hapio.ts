@@ -70,6 +70,7 @@ export interface HapioService {
   price?: number
   currency?: string
   location_id?: string
+  bookable_interval?: string
 }
 
 export interface HapioResource {

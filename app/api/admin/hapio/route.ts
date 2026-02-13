@@ -400,7 +400,7 @@ export async function POST(req: NextRequest) {
           try {
             const hapioService = await createHapioService({
               name: v.name,
-              description: v.description ?? undefined,
+              ...(v.description ? { description: v.description } : {}),
               duration: v.duration,
               location_id: location.id,
             })

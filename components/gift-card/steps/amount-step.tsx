@@ -4,15 +4,17 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Clock, Sparkles } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
-import { services, Service } from '@/lib/services-data'
+import type { Service } from '@/lib/services-data'
 
 interface AmountStepProps {
   data: GiftCardData
   onNext: (data: Partial<GiftCardData>) => void
   onBack: () => void
+  services?: Service[]
 }
 
-export function AmountStep({ data, onNext }: AmountStepProps) {
+export function AmountStep({ data, onNext, services: servicesProp }: AmountStepProps) {
+  const services = servicesProp ?? []
   const [selectedService, setSelectedService] = useState<string | null>(
     data.serviceId || null
   )
@@ -75,7 +77,7 @@ export function AmountStep({ data, onNext }: AmountStepProps) {
             <button
               key={service.id}
               onClick={() => setSelectedService(service.id)}
-              className={`relative p-6 rounded-xl border-2 transition-all text-left hover:shadow-lg ${
+              className={`relative p-6 rounded-xl border-2 transition-all text-left hover:shadow-lg h-full flex flex-col ${
                 isSelected
                   ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 shadow-lg'
                   : 'border-border bg-background hover:border-primary-300'
@@ -120,7 +122,7 @@ export function AmountStep({ data, onNext }: AmountStepProps) {
               )}
 
               {/* Price */}
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t border-border mt-auto">
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-primary-600 dark:text-primary-400">
                     {getPriceDisplay(service)}

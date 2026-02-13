@@ -4,17 +4,19 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, ChevronLeft, Clock, Euro } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
-import { services } from '@/lib/services-data'
+import type { Service } from '@/lib/services-data'
 
 interface HairLengthStepProps {
   data: GiftCardData
   onNext: (data: Partial<GiftCardData>) => void
   onBack: () => void
+  services?: Service[]
 }
 
-export function HairLengthStep({ data, onNext, onBack }: HairLengthStepProps) {
+export function HairLengthStep({ data, onNext, onBack, services: servicesProp }: HairLengthStepProps) {
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
 
+  const services = servicesProp ?? []
   const service = services.find((s) => s.id === data.serviceId)
 
   if (!service || !service.hasVariants || !service.variants) {

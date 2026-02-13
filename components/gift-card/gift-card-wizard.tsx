@@ -10,7 +10,7 @@ import { RecipientStep } from './steps/recipient-step'
 import { MessageStep } from './steps/message-step'
 import { BuyerStep } from './steps/buyer-step'
 import { ReviewStep } from './steps/review-step'
-import { services } from '@/lib/services-data'
+import type { Service } from '@/lib/services-data'
 
 export interface GiftCardData {
   // Service selection
@@ -61,7 +61,11 @@ const baseSteps = [
   { id: 7, name: 'Confirmation', component: ReviewStep },
 ]
 
-export function GiftCardWizard() {
+interface GiftCardWizardProps {
+  services: Service[]
+}
+
+export function GiftCardWizard({ services }: GiftCardWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<GiftCardData>({})
 
@@ -189,6 +193,7 @@ export function GiftCardWizard() {
               data={formData}
               onNext={handleNext}
               onBack={handleBack}
+              services={services}
             />
           </motion.div>
         </AnimatePresence>

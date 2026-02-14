@@ -449,7 +449,15 @@ export async function POST(req: NextRequest) {
         for (const svc of allServices) {
           if (svc.duration && !svc.bookable_interval) {
             try {
-              await updateHapioService(svc.id, { bookable_interval: svc.duration })
+              // Convertir duration (minutes) en ISO 8601 (ex: 30 → "PT30M")
+              const minutes = svc.duration
+              const hours = Math.floor(minutes / 60)
+              const mins = minutes % 60
+              const isoDuration = hours > 0
+                ? `PT${hours}H${mins > 0 ? `${mins}M` : ''}`
+                : `PT${mins}M`
+
+              await updateHapioService(svc.id, { bookable_interval: isoDuration })
               results.push({ id: svc.id, name: svc.name, status: 'fixed' })
             } catch (err) {
               results.push({ id: svc.id, name: svc.name, status: 'error' })

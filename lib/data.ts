@@ -246,14 +246,19 @@ export async function getActiveScheduleForHapio(): Promise<
 
     if (hour.day_label.includes(' - ')) {
       // It's a range like "Lundi - Vendredi"
-      const [startDay, endDay] = hour.day_label.split(' - ').map(d => d.trim())
-      const startNum = dayMapping[startDay]
-      const endNum = dayMapping[endDay]
+      const parts = hour.day_label.split(' - ').map(d => d.trim())
+      const startDay = parts[0]
+      const endDay = parts[1]
 
-      if (startNum !== undefined && endNum !== undefined) {
-        // Add all days in range (inclusive)
-        for (let i = startNum; i <= endNum; i++) {
-          daysToProcess.push(i)
+      if (startDay && endDay) {
+        const startNum = dayMapping[startDay]
+        const endNum = dayMapping[endDay]
+
+        if (startNum !== undefined && endNum !== undefined) {
+          // Add all days in range (inclusive)
+          for (let i = startNum; i <= endNum; i++) {
+            daysToProcess.push(i)
+          }
         }
       }
     } else {

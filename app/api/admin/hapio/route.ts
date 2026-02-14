@@ -459,7 +459,7 @@ export async function POST(req: NextRequest) {
 
               await updateHapioService(svc.id, { bookable_interval: isoDuration })
               results.push({ id: svc.id, name: svc.name, status: 'fixed' })
-            } catch (err) {
+            } catch {
               results.push({ id: svc.id, name: svc.name, status: 'error' })
             }
           } else {
@@ -485,7 +485,7 @@ export async function POST(req: NextRequest) {
           try {
             await updateResource(resource.id, { max_simultaneous_bookings: 1 })
             results.push({ id: resource.id, name: resource.name, status: 'fixed' })
-          } catch (err) {
+          } catch {
             results.push({ id: resource.id, name: resource.name, status: 'error' })
           }
         }

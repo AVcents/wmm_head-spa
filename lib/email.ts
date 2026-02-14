@@ -8,7 +8,6 @@ const resend = new Resend(process.env['RESEND_API_KEY'])
 
 const FROM = process.env['RESEND_FROM_EMAIL'] ?? 'onboarding@resend.dev'
 const SALON_EMAIL = process.env['SALON_EMAIL'] ?? 'contact@kalm-headspa.fr'
-const SITE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://kalm-headspa.fr'
 
 // Palette site (terracotta)
 const C = {

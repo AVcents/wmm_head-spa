@@ -19,13 +19,6 @@ export function Footer() {
     setTimeout(() => setIsSubscribed(false), 3000)
   }
 
-  const quickLinks = [
-    { href: '/', label: 'Accueil' },
-    { href: '/prestations', label: 'Nos prestations' },
-    { href: '/bon-cadeau', label: 'Bon cadeau' },
-    { href: '/a-propos', label: 'À propos' },
-  ]
-
   const legalLinks = [
     { href: '/mentions-legales', label: 'Mentions légales' },
     { href: '/cgv', label: 'CGV' },

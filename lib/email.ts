@@ -4,7 +4,18 @@
 
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env['RESEND_API_KEY'])
+let resend: Resend | null = null
+
+function getResend(): Resend {
+  if (!resend) {
+    const apiKey = process.env['RESEND_API_KEY']
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY is not set')
+    }
+    resend = new Resend(apiKey)
+  }
+  return resend
+}
 
 const FROM = process.env['RESEND_FROM_EMAIL'] ?? 'onboarding@resend.dev'
 const SALON_EMAIL = process.env['SALON_EMAIL'] ?? 'contact@kalm-headspa.fr'
@@ -348,10 +359,11 @@ export async function sendBookingEmails(data: BookingEmailData): Promise<void> {
     : data.serviceName
 
   const dateStr = `${formatDateFr(data.date)} à ${formatTimeFr(data.date)}`
+  const client = getResend()
 
   await Promise.allSettled([
     // Email au client
-    resend.emails.send({
+    client.emails.send({
       from: `Kalm Headspa <${FROM}>`,
       to: data.clientEmail,
       subject: `Réservation confirmée — ${serviceDisplay} · ${dateStr}`,
@@ -359,7 +371,7 @@ export async function sendBookingEmails(data: BookingEmailData): Promise<void> {
     }),
 
     // Notification au salon
-    resend.emails.send({
+    client.emails.send({
       from: `Kalm Headspa <${FROM}>`,
       to: SALON_EMAIL,
       subject: `[Nouvelle résa] ${data.clientName} — ${serviceDisplay} · ${dateStr}`,

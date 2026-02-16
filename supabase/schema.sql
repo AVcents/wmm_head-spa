@@ -138,12 +138,29 @@ INSERT INTO service_variants (id, service_id, name, hair_length, hair_length_lab
   ('revitalisant-mi-longs', 'revitalisant', 'Revitalisant 105 minutes - Mi-Longs', 'mi-longs', 'Cheveux mi-longs (en dessous d''épaule)', 105, 170, 2),
   ('revitalisant-longs', 'revitalisant', 'Revitalisant 105 minutes - Longs', 'longs', 'Cheveux longs (milieu du dos)', 105, 180, 3);
 
+-- Table des bons cadeaux
+CREATE TABLE IF NOT EXISTS gift_cards (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  service_id TEXT REFERENCES services(id),  -- NULL = bon cadeau libre
+  amount NUMERIC(10,2) NOT NULL,
+  used BOOLEAN NOT NULL DEFAULT false,
+  used_at TIMESTAMPTZ,
+  used_booking_id TEXT,
+  payment_intent_id TEXT,  -- PI d'origine (achat du bon)
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gift_cards_code ON gift_cards(code);
+
 -- RLS (Row Level Security)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_hours ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gift_cards ENABLE ROW LEVEL SECURITY;
 
 -- Politique lecture publique (tout le monde peut lire)
 CREATE POLICY "Public read services" ON services FOR SELECT USING (true);

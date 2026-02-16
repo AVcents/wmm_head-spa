@@ -2,13 +2,32 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Clock, Euro, ChevronDown, ChevronUp } from 'lucide-react'
+import { Clock, Euro, ChevronDown, ChevronUp, Gift } from 'lucide-react'
 import { Service } from '@/lib/services-data'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
 interface ServiceCardProps {
   service: Service
+}
+
+function buildGiftUrl(params: {
+  serviceId: string
+  serviceName: string
+  price: number
+  hairLength?: string
+  hairLengthLabel?: string
+  duration?: number
+}) {
+  const p = new URLSearchParams({
+    serviceId: params.serviceId,
+    serviceName: params.serviceName,
+    price: String(params.price),
+  })
+  if (params.hairLength) p.set('hairLength', params.hairLength)
+  if (params.hairLengthLabel) p.set('hairLengthLabel', params.hairLengthLabel)
+  if (params.duration !== undefined) p.set('duration', String(params.duration))
+  return `/bon-cadeau/commander?${p.toString()}`
 }
 
 export function ServiceCard({ service }: ServiceCardProps) {
@@ -52,9 +71,24 @@ export function ServiceCard({ service }: ServiceCardProps) {
               </span>
             </div>
           </div>
-          <Link href="/bon-cadeau">
-            <Button size="sm">Réserver</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={buildGiftUrl({
+                serviceId: service.id,
+                serviceName: service.name,
+                price: service.price!,
+                duration: service.duration,
+              })}
+            >
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Gift className="h-3.5 w-3.5" />
+                Bon cadeau
+              </Button>
+            </Link>
+            <Link href={`/reservation?serviceId=${service.id}`}>
+              <Button size="sm">Réserver</Button>
+            </Link>
+          </div>
         </div>
       </motion.div>
     )
@@ -129,11 +163,28 @@ export function ServiceCard({ service }: ServiceCardProps) {
                         </div>
                       </div>
                     </div>
-                    <Link href="/bon-cadeau">
-                      <Button size="sm" variant="outline">
-                        Réserver
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={buildGiftUrl({
+                          serviceId: service.id,
+                          serviceName: service.name,
+                          price: variant.price,
+                          hairLength: variant.hairLength,
+                          hairLengthLabel: variant.hairLengthLabel,
+                          duration: variant.duration,
+                        })}
+                      >
+                        <Button size="sm" variant="outline" className="gap-1.5">
+                          <Gift className="h-3.5 w-3.5" />
+                          Bon cadeau
+                        </Button>
+                      </Link>
+                      <Link href={`/reservation?serviceId=${service.id}&variantId=${variant.id}`}>
+                        <Button size="sm" variant="outline">
+                          Réserver
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>

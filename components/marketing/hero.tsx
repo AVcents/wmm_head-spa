@@ -77,7 +77,7 @@ export function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Link href="/bon-cadeau/commander" className="flex-1 sm:flex-initial">
+              <Link href="/reservation" className="flex-1 sm:flex-initial">
                 <Button size="lg" className="w-full group bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800">
                   Réserver une séance
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

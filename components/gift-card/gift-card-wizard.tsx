@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Gift, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -57,7 +58,7 @@ export interface GiftCardData {
   paymentIntentId?: string
 }
 
-// Steps de base (sans hair-length qui est conditionnelle)
+// Steps avec IDs stables
 const baseSteps = [
   { id: 1, name: 'Prestation', component: AmountStep },
   { id: 2, name: 'Longueur', component: HairLengthStep, conditional: true },
@@ -74,33 +75,100 @@ interface GiftCardWizardProps {
 }
 
 export function GiftCardWizard({ services }: GiftCardWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<GiftCardData>({})
+  const searchParams = useSearchParams()
+  const wizardBottomRef = useRef<HTMLDivElement>(null)
+
+  // Lecture des paramètres URL (pré-sélection depuis la page Prestations)
+  const urlServiceId = searchParams.get('serviceId')
+  const urlServiceName = searchParams.get('serviceName')
+  const urlPrice = searchParams.get('price')
+  const urlHairLength = searchParams.get('hairLength')
+  const urlHairLengthLabel = searchParams.get('hairLengthLabel')
+  const urlDuration = searchParams.get('duration')
+
+  const hasPreselectedService = Boolean(urlServiceId && urlServiceName && urlPrice)
+
+  const preselectedService = hasPreselectedService
+    ? services.find((s) => s.id === urlServiceId)
+    : null
+
+  // FormData initial depuis les URL params
+  const getInitialFormData = (): GiftCardData => {
+    if (!hasPreselectedService) return {}
+    return {
+      serviceId: urlServiceId ?? undefined,
+      serviceName: urlServiceName ?? undefined,
+      amount: urlPrice ? parseFloat(urlPrice) : undefined,
+      ...(urlHairLength
+        ? { hairLength: urlHairLength as GiftCardData['hairLength'] }
+        : {}),
+      ...(urlHairLengthLabel ? { hairLengthLabel: urlHairLengthLabel } : {}),
+      ...(urlDuration ? { serviceDuration: parseInt(urlDuration) } : {}),
+    }
+  }
+
+  // Étape initiale selon la pré-sélection
+  const getInitialStep = () => {
+    if (!hasPreselectedService) return 1
+    // Service avec variantes mais pas de longueur dans l'URL → montrer HairLengthStep
+    if (preselectedService?.hasVariants && !urlHairLength) return 2
+    // Service sans variantes ou longueur déjà connue → aller directement à Livraison
+    return 3
+  }
+
+  const [currentStep, setCurrentStep] = useState(getInitialStep)
+  const [formData, setFormData] = useState<GiftCardData>(getInitialFormData)
   const [isComplete, setIsComplete] = useState(false)
 
-  // Calculer les étapes visibles en fonction du service sélectionné
+  // Auto-scroll vers le bas du contenu à chaque changement d'étape
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      wizardBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [currentStep])
+
+  // Calcul des étapes visibles selon le contexte
   const getVisibleSteps = () => {
-    if (!formData.serviceId) {
-      return baseSteps
+    let stepsToShow = [...baseSteps]
+
+    // Masquer AmountStep si service pré-sélectionné depuis l'URL
+    if (hasPreselectedService) {
+      stepsToShow = stepsToShow.filter((s) => s.component !== AmountStep)
     }
 
-    const service = services.find((s) => s.id === formData.serviceId)
-    const shouldShowHairLength = service?.hasVariants || false
-
-    if (!shouldShowHairLength) {
-      return baseSteps.filter((step) => step.component !== HairLengthStep)
+    // Masquer HairLengthStep si le service n'a pas de variantes
+    const serviceId = formData.serviceId ?? urlServiceId
+    if (serviceId) {
+      const service = services.find((s) => s.id === serviceId)
+      if (!service?.hasVariants) {
+        stepsToShow = stepsToShow.filter((s) => s.component !== HairLengthStep)
+      }
     }
 
-    return baseSteps
+    return stepsToShow
   }
 
   const steps = getVisibleSteps()
+
+  // Lookup par ID pour éviter le bug d'index quand des étapes sont filtrées
+  const CurrentStepComponent =
+    steps.find((s) => s.id === currentStep)?.component ?? AmountStep
 
   const handleNext = (data: Partial<GiftCardData>) => {
     const newFormData = { ...formData, ...data }
     setFormData(newFormData)
 
-    // Si on vient de sélectionner un service sans variantes, skip l'étape hair-length
+    const currentIndex = steps.findIndex((s) => s.id === currentStep)
+    const isLastStep = currentIndex === steps.length - 1
+
+    // Dernière étape (Paiement) → succès
+    if (isLastStep) {
+      setIsComplete(true)
+      return
+    }
+
+    // Cas spécial : service sans variantes sélectionné à l'étape 1 → sauter HairLength
     if (currentStep === 1 && data.serviceId) {
       const service = services.find((s) => s.id === data.serviceId)
       if (service && !service.hasVariants) {
@@ -109,32 +177,19 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
       }
     }
 
-    // Dernière étape (Paiement) → succès
-    if (currentStep === baseSteps.length) {
-      setIsComplete(true)
-      return
-    }
-
-    if (currentStep < baseSteps.length) {
-      setCurrentStep((prev) => prev + 1)
+    // Naviguer vers l'étape suivante dans le tableau filtré
+    const nextStep = steps[currentIndex + 1]
+    if (nextStep) {
+      setCurrentStep(nextStep.id)
     }
   }
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      // Si on est à l'étape 3 et le service n'a pas de variantes, revenir à l'étape 1
-      if (currentStep === 3) {
-        const service = services.find((s) => s.id === formData.serviceId)
-        if (service && !service.hasVariants) {
-          setCurrentStep(1)
-          return
-        }
-      }
-      setCurrentStep((prev) => prev - 1)
+    const currentIndex = steps.findIndex((s) => s.id === currentStep)
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1]!.id)
     }
   }
-
-  const CurrentStepComponent = steps[currentStep - 1]?.component || AmountStep
 
   // -----------------------------------------------
   // Écran de succès
@@ -161,9 +216,13 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
               Bon cadeau envoyé !
             </h1>
             <p className="text-lg text-foreground-secondary mb-8">
-              Votre paiement de <strong className="text-primary-600">{totalAmount}€</strong> a bien été
-              encaissé. Le bon cadeau a été envoyé à{' '}
-              <strong>{formData.recipientFirstName} {formData.recipientLastName}</strong>.
+              Votre paiement de{' '}
+              <strong className="text-primary-600">{totalAmount}€</strong> a bien
+              été encaissé. Le bon cadeau a été envoyé à{' '}
+              <strong>
+                {formData.recipientFirstName} {formData.recipientLastName}
+              </strong>
+              .
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-left">
@@ -175,7 +234,9 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
                 <p className="font-medium text-foreground">
                   {formData.buyerFirstName} {formData.buyerLastName}
                 </p>
-                <p className="text-sm text-foreground-secondary">{formData.buyerEmail}</p>
+                <p className="text-sm text-foreground-secondary">
+                  {formData.buyerEmail}
+                </p>
               </div>
               {/* Destinataire */}
               <div className="p-4 rounded-xl bg-background border border-border">
@@ -250,7 +311,7 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
                             : 'text-foreground-secondary'
                         }`}
                       >
-                        {step.id}
+                        {index + 1}
                       </span>
                     )}
                   </div>
@@ -295,6 +356,9 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
             />
           </motion.div>
         </AnimatePresence>
+
+        {/* Cible auto-scroll — amène le bas du contenu en vue à chaque étape */}
+        <div ref={wizardBottomRef} />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle, Calendar, Clock, Mail, Phone, ArrowRight } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, Mail, Phone, ArrowRight, CreditCard, Shield, Gift } from 'lucide-react'
 import Link from 'next/link'
 import type { BookingState } from '../reservation-content'
 
@@ -25,10 +25,48 @@ function formatDateFr(dateStr: string): string {
   })
 }
 
+function PaymentModeLabel({ mode, amountPaid, price }: { mode: string | null; amountPaid: number | null; price: number }) {
+  if (mode === 'hold') {
+    return (
+      <div className="flex items-center gap-2">
+        <Shield className="h-4 w-4 text-primary-600" />
+        <span className="text-sm text-foreground-secondary">
+          Empreinte bancaire — paiement sur place ({price}€)
+        </span>
+      </div>
+    )
+  }
+  if (mode === 'direct') {
+    return (
+      <div className="flex items-center gap-2">
+        <CreditCard className="h-4 w-4 text-primary-600" />
+        <span className="text-sm text-foreground-secondary">
+          Payé par carte — {amountPaid ?? price}€
+        </span>
+      </div>
+    )
+  }
+  if (mode === 'gift_card') {
+    return (
+      <div className="flex items-center gap-2">
+        <Gift className="h-4 w-4 text-primary-600" />
+        <span className="text-sm text-foreground-secondary">
+          {amountPaid && amountPaid > 0
+            ? `Bon cadeau + complément CB (${amountPaid}€)`
+            : 'Réglé par bon cadeau'}
+        </span>
+      </div>
+    )
+  }
+  return null
+}
+
 export function ConfirmationStep({ booking }: Props) {
   const variant = booking.variantId
     ? booking.service?.variants?.find((v) => v.id === booking.variantId)
     : null
+
+  const price = variant?.price ?? booking.service?.price ?? 0
 
   return (
     <div className="text-center">
@@ -78,6 +116,15 @@ export function ConfirmationStep({ booking }: Props) {
               {booking.slot ? formatTime(booking.slot.startsAt) : ''}
             </span>
           </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Mode de paiement */}
+          <PaymentModeLabel
+            mode={booking.paymentMode}
+            amountPaid={booking.amountPaid}
+            price={price}
+          />
 
           <div className="h-px bg-border" />
 

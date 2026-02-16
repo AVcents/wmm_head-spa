@@ -24,6 +24,7 @@ export function Header() {
     { href: '/', label: 'Accueil' },
     { href: '/prestations', label: 'Prestations' },
     { href: '/bon-cadeau', label: 'Bon cadeau' },
+    { href: '/juste-paris', label: 'Juste Paris' },
     { href: '/le-headspa', label: 'Le Head Spa' },
     { href: '/a-propos', label: 'À propos' },
   ]
@@ -78,7 +79,7 @@ export function Header() {
               <span className="hidden lg:inline">06 21 57 12 22</span>
             </Button>
           </a>
-          <Link href="/bon-cadeau">
+          <Link href="/reservation">
             <Button size="sm" className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800">
               Réserver
             </Button>
@@ -130,7 +131,7 @@ export function Header() {
                     06 21 57 12 22
                   </Button>
                 </a>
-                <Link href="/bon-cadeau" className="block">
+                <Link href="/reservation" className="block">
                   <Button size="sm" className="w-full bg-gradient-to-r from-primary-600 to-primary-700">
                     Réserver une prestation
                   </Button>

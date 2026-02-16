@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Calendar, Clock, Sparkles, User, Check } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, CreditCard, Sparkles, User, Check } from 'lucide-react'
 import { Header } from '@/components/shared/header'
 import { Footer } from '@/components/shared/footer'
 import type { Service } from '@/lib/services-data'
@@ -10,7 +10,10 @@ import { ServiceStep } from './steps/service-step'
 import { DateStep } from './steps/date-step'
 import { SlotStep } from './steps/slot-step'
 import { InfoStep } from './steps/info-step'
+import { PaymentStep } from './steps/payment-step'
 import { ConfirmationStep } from './steps/confirmation-step'
+
+export type PaymentMode = 'hold' | 'direct' | 'gift_card'
 
 export interface BookingState {
   service: Service | null
@@ -29,9 +32,12 @@ export interface BookingState {
     email: string
     phone: string
     message?: string
-    giftCardCode?: string
   } | null
   bookingId: string | null
+  // Paiement
+  paymentMode: PaymentMode | null
+  paymentIntentId: string | null
+  amountPaid: number | null
 }
 
 const STEPS = [
@@ -39,6 +45,7 @@ const STEPS = [
   { id: 'date', label: 'Date', icon: Calendar },
   { id: 'slot', label: 'Créneau', icon: Clock },
   { id: 'info', label: 'Coordonnées', icon: User },
+  { id: 'payment', label: 'Paiement', icon: CreditCard },
 ] as const
 
 type StepId = (typeof STEPS)[number]['id'] | 'confirmation'
@@ -71,6 +78,9 @@ export default function ReservationContent({
     hapioLocationId: null,
     clientInfo: null,
     bookingId: null,
+    paymentMode: null,
+    paymentIntentId: null,
+    amountPaid: null,
   })
 
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep)
@@ -162,8 +172,8 @@ export default function ReservationContent({
             </div>
           )}
 
-          {/* Bouton retour */}
-          {currentStep !== 'service' && currentStep !== 'confirmation' && (
+          {/* Bouton retour (masqué sur payment car géré dans le composant) */}
+          {currentStep !== 'service' && currentStep !== 'confirmation' && currentStep !== 'payment' && (
             <button
               onClick={goBack}
               className="flex items-center gap-2 text-sm text-foreground-secondary hover:text-foreground mb-6 transition-colors"
@@ -219,10 +229,21 @@ export default function ReservationContent({
               {currentStep === 'info' && booking.service && booking.slot && (
                 <InfoStep
                   booking={booking}
-                  onConfirm={(clientInfo, bookingId) => {
-                    updateBooking({ clientInfo, bookingId })
+                  onNext={(clientInfo) => {
+                    updateBooking({ clientInfo })
+                    goTo('payment')
+                  }}
+                />
+              )}
+
+              {currentStep === 'payment' && booking.service && booking.slot && booking.clientInfo && (
+                <PaymentStep
+                  booking={booking}
+                  onConfirm={(bookingId, paymentMode, paymentIntentId, amountPaid) => {
+                    updateBooking({ bookingId, paymentMode, paymentIntentId, amountPaid })
                     goTo('confirmation')
                   }}
+                  onBack={() => goTo('info')}
                 />
               )}
 

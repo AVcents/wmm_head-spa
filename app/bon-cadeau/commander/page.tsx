@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Header } from '@/components/shared/header'
 import { Footer } from '@/components/shared/footer'
 import { GiftCardWizard } from '@/components/gift-card/gift-card-wizard'
@@ -12,7 +13,9 @@ export default async function CommanderBonCadeauPage() {
     <>
       <Header />
       <main>
-        <GiftCardWizard services={services} />
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <GiftCardWizard services={services} />
+        </Suspense>
       </main>
       <Footer />
     </>

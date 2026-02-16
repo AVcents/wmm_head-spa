@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { sendGiftCardEmails } from '@/lib/email'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { GiftCardEmailData } from '@/lib/email'
+
+// Désactiver le body parsing automatique — Stripe a besoin du raw body pour vérifier la signature
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -62,6 +66,25 @@ export async function POST(req: NextRequest) {
 
       await sendGiftCardEmails(data)
       console.log('[webhook] Gift card emails sent:', data.giftCardCode)
+
+      // Persister le bon cadeau dans Supabase pour utilisation ultérieure
+      try {
+        const supabase = createAdminClient()
+        const serviceId = meta['serviceId'] || null
+        await supabase.from('gift_cards').insert({
+          code: meta['giftCardCode'] ?? '',
+          service_id: serviceId && serviceId.length > 0 ? serviceId : null,
+          amount: giftAmount,
+          payment_intent_id: pi.id,
+          expires_at: new Date(
+            Date.now() + 365 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+        })
+        console.log('[webhook] Gift card saved to Supabase:', meta['giftCardCode'])
+      } catch (dbErr) {
+        console.error('[webhook] Failed to save gift card to Supabase:', dbErr)
+        // Ne pas bloquer — l'email a déjà été envoyé
+      }
     } catch (err) {
       console.error('[webhook] Failed to send emails:', err)
       // Retourner 500 pour que Stripe réessaie

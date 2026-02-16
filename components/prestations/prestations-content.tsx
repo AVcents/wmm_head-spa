@@ -120,7 +120,7 @@ export function PrestationsContent({ services }: PrestationsContentProps) {
                       Chaque séance de Head Spa augmente jusqu&apos;à <strong>120% la circulation sanguine</strong>,
                       réduit le stress de <strong>40%</strong>, et active les gènes de croissance capillaire pendant <strong>72 heures</strong>.
                     </p>
-                    <Link href="/bon-cadeau/commander">
+                    <Link href="/reservation">
                       <Button size="lg" variant="outline" className="bg-white text-primary-600 hover:bg-white/90 border-0 group">
                         Réserver maintenant
                         <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

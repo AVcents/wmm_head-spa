@@ -94,17 +94,19 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
 
   // FormData initial depuis les URL params
   const getInitialFormData = (): GiftCardData => {
-    if (!hasPreselectedService) return {}
-    return {
-      serviceId: urlServiceId ?? undefined,
-      serviceName: urlServiceName ?? undefined,
-      amount: urlPrice ? parseFloat(urlPrice) : undefined,
-      ...(urlHairLength
-        ? { hairLength: urlHairLength as GiftCardData['hairLength'] }
-        : {}),
-      ...(urlHairLengthLabel ? { hairLengthLabel: urlHairLengthLabel } : {}),
-      ...(urlDuration ? { serviceDuration: parseInt(urlDuration) } : {}),
+    if (!hasPreselectedService || !urlServiceId || !urlServiceName || !urlPrice) return {}
+    const data: GiftCardData = {
+      serviceId: urlServiceId,
+      serviceName: urlServiceName,
+      amount: parseFloat(urlPrice),
     }
+    if (urlHairLength) {
+      const hl = urlHairLength as NonNullable<GiftCardData['hairLength']>
+      data.hairLength = hl
+    }
+    if (urlHairLengthLabel) data.hairLengthLabel = urlHairLengthLabel
+    if (urlDuration) data.serviceDuration = parseInt(urlDuration)
+    return data
   }
 
   // Étape initiale selon la pré-sélection

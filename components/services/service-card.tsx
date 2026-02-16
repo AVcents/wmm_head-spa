@@ -77,7 +77,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
                 serviceId: service.id,
                 serviceName: service.name,
                 price: service.price!,
-                duration: service.duration,
+                ...(service.duration !== undefined ? { duration: service.duration } : {}),
               })}
             >
               <Button size="sm" variant="outline" className="gap-1.5">

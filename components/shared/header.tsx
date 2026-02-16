@@ -42,9 +42,9 @@ export function Header() {
           <Image
               src="/images/Logo-Kalm-Head-spa.png"
               alt="Kalm Headspa"
-              width={56}
-              height={56}
-              className="h-14 w-auto"
+              width={48}
+              height={48}
+              className="h-12 w-auto"
             />
           <div className="flex flex-col">
             <span className="text-3xl font-script text-foreground leading-none">

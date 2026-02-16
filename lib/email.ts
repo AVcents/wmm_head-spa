@@ -628,29 +628,46 @@ function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
 export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void> {
   const client = getResend()
 
-  await Promise.allSettled([
-    // Confirmation à l'acheteur
-    client.emails.send({
-      from: `Kalm Headspa <${FROM}>`,
-      to: data.buyerEmail,
-      subject: `Votre bon cadeau Kalm Headspa — ${data.giftCardCode}`,
-      html: buildGiftCardBuyerHtml(data),
-    }),
-    // Bon cadeau au destinataire
-    client.emails.send({
-      from: `Kalm Headspa <${FROM}>`,
-      to: data.recipientEmail,
-      subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
-      html: buildGiftCardRecipientHtml(data),
-    }),
-    // Notification salon
-    client.emails.send({
-      from: `Kalm Headspa <${FROM}>`,
-      to: SALON_EMAIL,
-      subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`,
-      html: buildGiftCardSalonHtml(data),
-    }),
-  ])
+  console.log('[sendGiftCardEmails] Sending emails for', data.giftCardCode, {
+    from: FROM,
+    buyerEmail: data.buyerEmail,
+    recipientEmail: data.recipientEmail,
+    salonEmail: SALON_EMAIL,
+  })
+
+  const sends = [
+    { label: 'buyer', to: data.buyerEmail, subject: `Votre bon cadeau Kalm Headspa — ${data.giftCardCode}`, html: buildGiftCardBuyerHtml(data) },
+    { label: 'recipient', to: data.recipientEmail, subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`, html: buildGiftCardRecipientHtml(data) },
+    { label: 'salon', to: SALON_EMAIL, subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`, html: buildGiftCardSalonHtml(data) },
+  ]
+
+  const results = await Promise.allSettled(
+    sends.map(({ to, subject, html }) =>
+      client.emails.send({ from: `Kalm Headspa <${FROM}>`, to, subject, html })
+    )
+  )
+
+  const failures: string[] = []
+
+  results.forEach((result, i) => {
+    const label = sends[i]!.label
+    if (result.status === 'rejected') {
+      console.error(`[sendGiftCardEmails] ${label} REJECTED:`, result.reason)
+      failures.push(`${label}: ${String(result.reason)}`)
+    } else {
+      const { data: emailData, error } = result.value
+      if (error) {
+        console.error(`[sendGiftCardEmails] ${label} ERROR:`, JSON.stringify(error))
+        failures.push(`${label}: ${JSON.stringify(error)}`)
+      } else {
+        console.log(`[sendGiftCardEmails] ${label} OK — id:`, emailData?.id)
+      }
+    }
+  })
+
+  if (failures.length > 0) {
+    throw new Error(`Email failures: ${failures.join(' | ')}`)
+  }
 }
 
 // -----------------------------------------------

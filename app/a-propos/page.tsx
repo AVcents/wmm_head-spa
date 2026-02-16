@@ -13,6 +13,7 @@ export default function AProposPage() {
     {
       icon: Calendar,
       title: 'Liberté & Équilibre',
+      description: 'Un planning pensé pour être pleinement présente à la fois pour ma famille et pour vous. Parce que l\'équilibre n\'est pas un luxe, c\'est une nécessité.',
     },
     {
       icon: Users,

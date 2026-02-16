@@ -26,7 +26,7 @@ export default function MentionsLegalesPage() {
       content: (
         <>
           <p><strong>Téléphone :</strong> <a href="tel:0621571222" className="text-primary-600 dark:text-primary-400 hover:underline">06 21 57 12 22</a></p>
-          <p><strong>Email :</strong> <a href="mailto:gw.guiot@outlook.fr" className="text-primary-600 dark:text-primary-400 hover:underline">gw.guiot@outlook.fr</a></p>
+          <p><strong>Email :</strong> <a href="mailto:contact@kalm-headspa.fr" className="text-primary-600 dark:text-primary-400 hover:underline">contact@kalm-headspa.fr</a></p>
           <p><strong>Adresse :</strong> 65 Rue du Centre, 88200 Vecoux</p>
         </>
       ),
@@ -81,7 +81,7 @@ export default function MentionsLegalesPage() {
             <li>L'envoi de communications commerciales (avec votre consentement)</li>
           </ul>
           <p className="mt-4">Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, de suppression et d'opposition aux données vous concernant.</p>
-          <p className="mt-4">Pour exercer ces droits, vous pouvez nous contacter à l'adresse : <a href="mailto:gw.guiot@outlook.fr" className="text-primary-600 dark:text-primary-400 hover:underline">gw.guiot@outlook.fr</a></p>
+          <p className="mt-4">Pour exercer ces droits, vous pouvez nous contacter à l'adresse : <a href="mailto:contact@kalm-headspa.fr" className="text-primary-600 dark:text-primary-400 hover:underline">contact@kalm-headspa.fr</a></p>
           <p className="mt-4">Pour plus d'informations, consultez notre <a href="/politique-confidentialite" className="text-primary-600 dark:text-primary-400 hover:underline">Politique de confidentialité</a>.</p>
         </>
       ),
@@ -200,7 +200,7 @@ export default function MentionsLegalesPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href="mailto:gw.guiot@outlook.fr"
+                  href="mailto:contact@kalm-headspa.fr"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white text-primary-600 font-medium hover:bg-white/90 transition-colors"
                 >
                   <Mail className="h-5 w-5" />

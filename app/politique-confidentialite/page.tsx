@@ -17,7 +17,7 @@ export default function PolitiqueConfidentialitePage() {
           Gwenaëlle GUIOT<br />
           65 Rue du Centre<br />
           88200 Vecoux<br />
-          Email : <a href="mailto:gw.guiot@outlook.fr" className="text-primary-600 dark:text-primary-400 hover:underline">gw.guiot@outlook.fr</a><br />
+          Email : <a href="mailto:contact@kalm-headspa.fr" className="text-primary-600 dark:text-primary-400 hover:underline">contact@kalm-headspa.fr</a><br />
           Téléphone : <a href="tel:0621571222" className="text-primary-600 dark:text-primary-400 hover:underline">06 21 57 12 22</a></p>
         </>
       ),
@@ -152,7 +152,7 @@ export default function PolitiqueConfidentialitePage() {
           <p className="mt-4"><strong>Comment exercer vos droits :</strong></p>
           <p className="mt-2">Vous pouvez exercer ces droits en nous contactant :</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Par email : <a href="mailto:gw.guiot@outlook.fr" className="text-primary-600 dark:text-primary-400 hover:underline">gw.guiot@outlook.fr</a></li>
+            <li>Par email : <a href="mailto:contact@kalm-headspa.fr" className="text-primary-600 dark:text-primary-400 hover:underline">contact@kalm-headspa.fr</a></li>
             <li>Par téléphone : <a href="tel:0621571222" className="text-primary-600 dark:text-primary-400 hover:underline">06 21 57 12 22</a></li>
             <li>Par courrier : 65 Rue du Centre, 88200 Vecoux</li>
           </ul>
@@ -368,11 +368,11 @@ export default function PolitiqueConfidentialitePage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
-                  href="mailto:gw.guiot@outlook.fr"
+                  href="mailto:contact@kalm-headspa.fr"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-white text-primary-600 font-medium hover:bg-white/90 transition-colors"
                 >
                   <Mail className="h-5 w-5" />
-                  gw.guiot@outlook.fr
+                  contact@kalm-headspa.fr
                 </a>
                 <a
                   href="tel:0621571222"

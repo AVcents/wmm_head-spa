@@ -156,11 +156,11 @@ export function Footer() {
                     <span>06 21 57 12 22</span>
                   </a>
                   <a
-                    href="mailto:gw.guiot@outlook.fr"
+                    href="mailto:contact@kalm-headspa.fr"
                     className="flex items-center space-x-3 text-sm text-foreground-secondary hover:text-primary-600 dark:hover:text-primary-400 transition-colors group"
                   >
                     <Mail className="h-5 w-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                    <span>gw.guiot@outlook.fr</span>
+                    <span>contact@kalm-headspa.fr</span>
                   </a>
                 </div>
               </div>

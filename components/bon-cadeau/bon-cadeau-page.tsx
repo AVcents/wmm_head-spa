@@ -288,7 +288,7 @@ export function BonCadeauPageContent({ services }: BonCadeauPageProps) {
                   06 21 57 12 22
                 </Button>
               </a>
-              <a href="mailto:gw.guiot@outlook.fr">
+              <a href="mailto:contact@kalm-headspa.fr">
                 <Button variant="outline" size="lg">
                   <Mail className="mr-2 h-5 w-5" />
                   Nous écrire

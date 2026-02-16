@@ -33,7 +33,7 @@ export default function CGVPage() {
           <ul className="list-disc list-inside mt-2 space-y-1">
             <li>En ligne via notre système de réservation</li>
             <li>Par téléphone au 06 21 57 12 22</li>
-            <li>Par email à gw.guiot@outlook.fr</li>
+            <li>Par email à contact@kalm-headspa.fr</li>
           </ul>
           <p className="mt-4"><strong>2.2 - Confirmation</strong></p>
           <p className="mt-2">Toute réservation fait l'objet d'une confirmation par email ou SMS. En l'absence de confirmation, le rendez-vous n'est pas validé.</p>
@@ -53,7 +53,7 @@ export default function CGVPage() {
           <ul className="list-disc list-inside mt-2 space-y-1">
             <li>Via votre espace de réservation en ligne</li>
             <li>Par téléphone au 06 21 57 12 22</li>
-            <li>Par email à gw.guiot@outlook.fr</li>
+            <li>Par email à contact@kalm-headspa.fr</li>
           </ul>
           <p className="mt-4"><strong>Pénalités en cas d'annulation tardive :</strong></p>
           <ul className="list-disc list-inside mt-2 space-y-1">
@@ -160,7 +160,7 @@ export default function CGVPage() {
           <p><strong>9.1 - Service client</strong></p>
           <p className="mt-2">Pour toute réclamation, vous pouvez nous contacter :</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Par email : gw.guiot@outlook.fr</li>
+            <li>Par email : contact@kalm-headspa.fr</li>
             <li>Par téléphone : 06 21 57 12 22</li>
             <li>Par courrier : 65 Rue du Centre, 88200 Vecoux</li>
           </ul>
@@ -282,7 +282,7 @@ export default function CGVPage() {
                   06 21 57 12 22
                 </a>
                 <a
-                  href="mailto:gw.guiot@outlook.fr"
+                  href="mailto:contact@kalm-headspa.fr"
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-white/30 text-white font-medium hover:bg-white/10 transition-colors"
                 >
                   Nous écrire

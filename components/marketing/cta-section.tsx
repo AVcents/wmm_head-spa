@@ -47,7 +47,7 @@ export function CTASection() {
                 06 21 57 12 22
               </Button>
             </a>
-            <a href="mailto:gw.guiot@outlook.fr">
+            <a href="mailto:contact@kalm-headspa.fr">
               <Button
                 size="lg"
                 variant="outline"

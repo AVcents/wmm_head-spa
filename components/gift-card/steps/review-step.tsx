@@ -49,8 +49,9 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
       const { clientSecret, paymentIntentId } = await res.json()
       onNext({ clientSecret, paymentIntentId })
     } catch (err) {
-      console.error('[ReviewStep]', err)
-      alert('Une erreur est survenue. Veuillez réessayer.')
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[ReviewStep]', msg)
+      alert(`Erreur : ${msg}`)
       setIsSubmitting(false)
     }
   }

@@ -1,4 +1,13 @@
-import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/server'
+
+/** Client public (anon key, no cookies needed — public reads only) */
+function createPublicClient() {
+  return createClient(
+    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+  )
+}
 import type {
   ServiceRow,
   ServiceVariantRow,
@@ -15,7 +24,7 @@ import type { Service } from '@/lib/services-data'
 
 /** Fetch all active services with their variants */
 export async function getServices(): Promise<Service[]> {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createPublicClient()
 
   const { data: services, error } = await supabase
     .from('services')
@@ -38,7 +47,7 @@ export async function getActiveSchedule(): Promise<{
   template: ScheduleTemplateRow
   hours: ScheduleHourRow[]
 } | null> {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createPublicClient()
 
   // Get active template ID
   const { data: config, error: configError } = await supabase

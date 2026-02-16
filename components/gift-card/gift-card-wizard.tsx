@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check, Gift, Mail } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import { AmountStep } from './steps/amount-step'
 import { HairLengthStep } from './steps/hair-length-step'
 import { DeliveryStep } from './steps/delivery-step'
@@ -10,6 +12,7 @@ import { RecipientStep } from './steps/recipient-step'
 import { MessageStep } from './steps/message-step'
 import { BuyerStep } from './steps/buyer-step'
 import { ReviewStep } from './steps/review-step'
+import { PaymentStep } from './steps/payment-step'
 import type { Service } from '@/lib/services-data'
 
 export interface GiftCardData {
@@ -48,6 +51,10 @@ export interface GiftCardData {
     country: string
   }
   shippingTo?: 'recipient' | 'buyer'
+
+  // Payment (Stripe)
+  clientSecret?: string
+  paymentIntentId?: string
 }
 
 // Steps de base (sans hair-length qui est conditionnelle)
@@ -57,8 +64,9 @@ const baseSteps = [
   { id: 3, name: 'Livraison', component: DeliveryStep },
   { id: 4, name: 'Destinataire', component: RecipientStep },
   { id: 5, name: 'Message', component: MessageStep },
-  { id: 6, name: 'Vos informations', component: BuyerStep },
-  { id: 7, name: 'Confirmation', component: ReviewStep },
+  { id: 6, name: 'Vos infos', component: BuyerStep },
+  { id: 7, name: 'Récapitulatif', component: ReviewStep },
+  { id: 8, name: 'Paiement', component: PaymentStep },
 ]
 
 interface GiftCardWizardProps {
@@ -68,6 +76,7 @@ interface GiftCardWizardProps {
 export function GiftCardWizard({ services }: GiftCardWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<GiftCardData>({})
+  const [isComplete, setIsComplete] = useState(false)
 
   // Calculer les étapes visibles en fonction du service sélectionné
   const getVisibleSteps = () => {
@@ -79,7 +88,6 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     const shouldShowHairLength = service?.hasVariants || false
 
     if (!shouldShowHairLength) {
-      // Filtrer l'étape hair-length si pas de variantes
       return baseSteps.filter((step) => step.component !== HairLengthStep)
     }
 
@@ -96,10 +104,15 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     if (currentStep === 1 && data.serviceId) {
       const service = services.find((s) => s.id === data.serviceId)
       if (service && !service.hasVariants) {
-        // Skip directement à l'étape 3 (livraison)
         setCurrentStep(3)
         return
       }
+    }
+
+    // Dernière étape (Paiement) → succès
+    if (currentStep === baseSteps.length) {
+      setIsComplete(true)
+      return
     }
 
     if (currentStep < baseSteps.length) {
@@ -122,6 +135,91 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
   }
 
   const CurrentStepComponent = steps[currentStep - 1]?.component || AmountStep
+
+  // -----------------------------------------------
+  // Écran de succès
+  // -----------------------------------------------
+  if (isComplete) {
+    const deliveryFee = formData.deliveryMethod === 'physical' ? 5 : 0
+    const totalAmount = (formData.amount ?? 0) + deliveryFee
+
+    return (
+      <div className="min-h-screen bg-background py-12 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="container mx-auto max-w-2xl px-4 sm:px-6"
+        >
+          <div className="bg-surface border border-border rounded-3xl p-8 sm:p-12 text-center">
+            {/* Icône succès */}
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 mb-6 mx-auto">
+              <Check className="h-10 w-10 text-white" />
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold text-foreground mb-3">
+              Bon cadeau envoyé !
+            </h1>
+            <p className="text-lg text-foreground-secondary mb-8">
+              Votre paiement de <strong className="text-primary-600">{totalAmount}€</strong> a bien été
+              encaissé. Le bon cadeau a été envoyé à{' '}
+              <strong>{formData.recipientFirstName} {formData.recipientLastName}</strong>.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-left">
+              {/* Acheteur */}
+              <div className="p-4 rounded-xl bg-background border border-border">
+                <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide mb-2">
+                  Confirmation envoyée à
+                </p>
+                <p className="font-medium text-foreground">
+                  {formData.buyerFirstName} {formData.buyerLastName}
+                </p>
+                <p className="text-sm text-foreground-secondary">{formData.buyerEmail}</p>
+              </div>
+              {/* Destinataire */}
+              <div className="p-4 rounded-xl bg-background border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  {formData.deliveryMethod === 'digital' ? (
+                    <Mail className="h-4 w-4 text-primary-600" />
+                  ) : (
+                    <Gift className="h-4 w-4 text-primary-600" />
+                  )}
+                  <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide">
+                    Bon cadeau envoyé à
+                  </p>
+                </div>
+                <p className="font-medium text-foreground">
+                  {formData.recipientFirstName} {formData.recipientLastName}
+                </p>
+                <p className="text-sm text-foreground-secondary">
+                  {formData.deliveryMethod === 'digital'
+                    ? formData.recipientEmail
+                    : 'Par courrier postal'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Retour à l&apos;accueil
+                </Button>
+              </Link>
+              <Link href="/prestations">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto bg-gradient-to-r from-primary-600 to-primary-700"
+                >
+                  Découvrir nos soins
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background py-12">

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Sparkles,
   Clock,
   Scissors,
   Calendar,
@@ -13,6 +12,7 @@ import {
   X,
   ArrowLeft,
 } from 'lucide-react'
+import Image from 'next/image'
 
 const navItems = [
   { href: '/admin/horaires', label: 'Horaires', icon: Clock },
@@ -51,7 +51,7 @@ export default function AdminLayout({
           <Menu className="h-6 w-6 text-foreground" />
         </button>
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary-600" />
+          <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={24} height={24} className="h-6 w-auto" />
           <span className="font-serif font-semibold text-foreground">Admin</span>
         </div>
         <div className="w-10" />
@@ -102,9 +102,7 @@ function SidebarContent({
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={40} height={40} className="h-10 w-auto" />
             <div>
               <h2 className="font-serif font-bold text-foreground">Kalm</h2>
               <p className="text-xs text-foreground-muted">Administration</p>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Lock, Eye, EyeOff } from 'lucide-react'
+import { Lock, Eye, EyeOff } from 'lucide-react'
+import Image from 'next/image'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -41,8 +42,8 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 mb-4">
-            <Sparkles className="h-8 w-8 text-white" />
+          <div className="mb-4">
+            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={64} height={64} className="h-16 w-auto mx-auto" />
           </div>
           <h1 className="text-3xl font-serif font-bold text-foreground">
             Kalm Headspa

@@ -99,7 +99,7 @@ export function Hero() {
             className="relative h-[500px] lg:h-[600px] rounded-3xl overflow-hidden shadow-2xl hidden lg:block"
           >
             <Image
-              src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1200&q=80"
+              src="/images/Tablemassage.jpeg"
               alt="Massage crânien professionnel au Kalm Headspa"
               fill
               className="object-cover"

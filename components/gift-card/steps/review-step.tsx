@@ -19,10 +19,40 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    // TODO: Implement actual payment/order submission
-    // For now, just simulate a delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    onNext({})
+    try {
+      const res = await fetch('/api/gift-card/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalAmount,
+          serviceId: data.serviceId ?? '',
+          serviceName: data.serviceName ?? 'Bon cadeau libre',
+          hairLengthLabel: data.hairLengthLabel ?? '',
+          deliveryMethod: data.deliveryMethod ?? 'digital',
+          deliveryFee,
+          buyerEmail: data.buyerEmail ?? '',
+          buyerFirstName: data.buyerFirstName ?? '',
+          buyerLastName: data.buyerLastName ?? '',
+          buyerPhone: data.buyerPhone ?? '',
+          recipientEmail: data.recipientEmail ?? '',
+          recipientFirstName: data.recipientFirstName ?? '',
+          recipientLastName: data.recipientLastName ?? '',
+          recipientPhone: data.recipientPhone ?? '',
+          senderName: data.senderName ?? '',
+          personalMessage: data.personalMessage ?? '',
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Erreur serveur')
+      }
+      const { clientSecret, paymentIntentId } = await res.json()
+      onNext({ clientSecret, paymentIntentId })
+    } catch (err) {
+      console.error('[ReviewStep]', err)
+      alert('Une erreur est survenue. Veuillez réessayer.')
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -223,13 +253,11 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
           className="w-full sm:w-auto"
         >
           {isSubmitting ? (
-            <>
-              <span className="mr-2">Traitement en cours...</span>
-            </>
+            'Préparation du paiement...'
           ) : (
             <>
               <Check className="mr-2 h-5 w-5" />
-              Finaliser la commande
+              Procéder au paiement
             </>
           )}
         </Button>

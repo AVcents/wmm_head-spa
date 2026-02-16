@@ -91,9 +91,13 @@ export function Footer() {
             {/* À propos */}
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
+                <Image
+                  src="/images/Logo-Kalm-Head-spa.png"
+                  alt="Kalm Headspa"
+                  width={32}
+                  height={32}
+                  className="h-8 w-auto"
+                />
                 <h3 className="text-lg font-serif font-semibold text-foreground">
                   Kalm Headspa
                 </h3>

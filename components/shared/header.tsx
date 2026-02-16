@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from './theme-toggle'
-import { Menu, X, Sparkles, Phone } from 'lucide-react'
+import { Menu, X, Phone } from 'lucide-react'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function Header() {
@@ -23,6 +24,7 @@ export function Header() {
     { href: '/', label: 'Accueil' },
     { href: '/prestations', label: 'Prestations' },
     { href: '/bon-cadeau', label: 'Bon cadeau' },
+    { href: '/le-headspa', label: 'Le Head Spa' },
     { href: '/a-propos', label: 'À propos' },
   ]
 
@@ -37,9 +39,13 @@ export function Header() {
       <div className="container mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg group-hover:shadow-xl transition-shadow">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
+          <Image
+              src="/images/Logo-Kalm-Head-spa.png"
+              alt="Kalm Headspa"
+              width={40}
+              height={40}
+              className="h-10 w-auto"
+            />
           <div className="flex flex-col">
             <span className="text-3xl font-script text-foreground leading-none">
               Kalm Headspa
@@ -72,7 +78,7 @@ export function Header() {
               <span className="hidden lg:inline">06 21 57 12 22</span>
             </Button>
           </a>
-          <Link href="/reservation">
+          <Link href="/bon-cadeau">
             <Button size="sm" className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800">
               Réserver
             </Button>
@@ -124,7 +130,7 @@ export function Header() {
                     06 21 57 12 22
                   </Button>
                 </a>
-                <Link href="/reservation" className="block">
+                <Link href="/bon-cadeau" className="block">
                   <Button size="sm" className="w-full bg-gradient-to-r from-primary-600 to-primary-700">
                     Réserver une prestation
                   </Button>

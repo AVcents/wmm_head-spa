@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import { Gift, Heart, Sparkles, Phone, Mail, ArrowRight } from 'lucide-react'
+import { Gift, Heart, Sparkles, Phone, ArrowRight } from 'lucide-react'
 
 export function BonCadeauPageContent() {
   return (

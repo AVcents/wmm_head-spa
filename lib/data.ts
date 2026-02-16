@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /** Client public (anon key, no cookies needed — public reads only) */
 function createPublicClient() {

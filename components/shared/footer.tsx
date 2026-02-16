@@ -94,9 +94,9 @@ export function Footer() {
                 <Image
                   src="/images/Logo-Kalm-Head-spa.png"
                   alt="Kalm Headspa"
-                  width={32}
-                  height={32}
-                  className="h-8 w-auto"
+                  width={48}
+                  height={48}
+                  className="h-12 w-auto"
                 />
                 <h3 className="text-lg font-serif font-semibold text-foreground">
                   Kalm Headspa

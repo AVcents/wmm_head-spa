@@ -33,8 +33,8 @@ export function BonCadeauPageContent() {
               </h1>
 
               <p className="text-lg sm:text-xl text-foreground-secondary mb-8 leading-relaxed">
-                Faites plaisir à vos proches avec une carte cadeau Kalm Headspa.
-                Un cadeau unique pour une expérience de relaxation inoubliable.
+                Vous ne savez pas quoi offrir ? Offrez une vraie pause.
+                Une séance au salon de Gwenaëlle — c&apos;est un cadeau qu&apos;on n&apos;oublie pas.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -88,9 +88,9 @@ export function BonCadeauPageContent() {
 
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             {[
-              { icon: Heart, title: 'Attentionné', description: 'Montrez à vos proches que vous pensez à leur bien-être et leur relaxation' },
-              { icon: Sparkles, title: 'Unique', description: 'Une expérience mémorable qui sort de l\'ordinaire et crée des souvenirs' },
-              { icon: Gift, title: 'Flexible', description: 'Valable 1 an, utilisable sur toutes nos prestations selon les envies' },
+              { icon: Heart, title: 'Un vrai geste', description: 'Pas un parfum au hasard. Un soin pensé pour faire du bien — ça se remarque.' },
+              { icon: Sparkles, title: 'Une expérience', description: 'On se souvient toujours d\'un bon moment. Un Head Spa, ça marque.' },
+              { icon: Gift, title: 'Sans pression', description: 'Valable 1 an. La personne choisit sa séance quand elle est prête, à son rythme.' },
             ].map((benefit, index) => (
               <motion.div
                 key={benefit.title}
@@ -145,9 +145,9 @@ export function BonCadeauPageContent() {
 
           <div className="grid md:grid-cols-3 gap-8 md:gap-12 mb-12">
             {[
-              { step: '1', title: 'Choisissez', description: 'Sélectionnez la prestation ou le montant de votre choix' },
-              { step: '2', title: 'Personnalisez', description: 'Ajoutez un message personnel pour rendre le cadeau unique' },
-              { step: '3', title: 'Offrez', description: 'Recevez votre bon cadeau personnalisé et faites plaisir à vos proches' },
+              { step: '1', title: 'Choisissez', description: 'Sélectionnez la prestation ou le montant — il y en a pour tous les budgets' },
+              { step: '2', title: 'Personnalisez', description: 'Ajoutez un petit mot — c\'est ça qui fait toute la différence' },
+              { step: '3', title: 'C\'est parti', description: 'Vous recevez le bon cadeau par email, en PDF, tout de suite. Plus qu\'à imprimer ou transférer.' },
             ].map((item, index) => (
               <motion.div
                 key={item.step}
@@ -229,10 +229,11 @@ export function BonCadeauPageContent() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white mb-6">
-              Offrez le cadeau du bien-être
+              Faites-leur vraiment plaisir
             </h2>
             <p className="text-lg sm:text-xl text-white/90 mb-10 leading-relaxed">
-              Un moment de détente absolue qui restera gravé dans les mémoires.
+              Commandez en ligne en quelques clics, ou appelez-moi si vous avez la moindre question.
+              Je suis là pour vous aider à choisir.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a href="tel:0621571222">

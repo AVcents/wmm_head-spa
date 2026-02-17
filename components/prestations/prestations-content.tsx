@@ -93,7 +93,7 @@ export function PrestationsContent({ services }: PrestationsContentProps) {
                 Nos prestations
               </h1>
               <p className="text-lg sm:text-xl text-foreground-secondary max-w-2xl mx-auto">
-                Découvrez nos soins Head Spa et massages pour votre bien-être
+                Head Spa, massages, soins capillaires — prenez le temps de choisir ce dont vous avez besoin
               </p>
             </motion.div>
 
@@ -110,15 +110,15 @@ export function PrestationsContent({ services }: PrestationsContentProps) {
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm mb-4">
                       <Sparkles className="h-4 w-4 text-white" />
                       <span className="text-sm font-medium text-white">
-                        Résultats scientifiquement prouvés
+                        Un vrai moment pour vous
                       </span>
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-4">
-                      Transformez votre bien-être en 60-90 minutes
+                      Du bien en une heure
                     </h2>
                     <p className="text-white/90 mb-6">
-                      Chaque séance de Head Spa augmente jusqu&apos;à <strong>120% la circulation sanguine</strong>,
-                      réduit le stress de <strong>40%</strong>, et active les gènes de croissance capillaire pendant <strong>72 heures</strong>.
+                      Moins de stress, un cuir chevelu qui respire, des cheveux nourris — et surtout,
+                      cette sensation de <strong>légèreté</strong> que vous ressentez en sortant du salon.
                     </p>
                     <Link href="/reservation">
                       <Button size="lg" variant="outline" className="bg-white text-primary-600 hover:bg-white/90 border-0 group">
@@ -142,7 +142,7 @@ export function PrestationsContent({ services }: PrestationsContentProps) {
                     <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 col-span-2">
                       <Sparkles className="h-8 w-8 text-white mb-2" />
                       <div className="text-2xl font-bold text-white">72 heures</div>
-                      <div className="text-sm text-white/80">D&apos;activation génétique capillaire</div>
+                      <div className="text-sm text-white/80">D&apos;effets sur le cuir chevelu</div>
                     </div>
                   </div>
                 </div>

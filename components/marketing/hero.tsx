@@ -8,9 +8,9 @@ import { motion } from 'framer-motion'
 
 export function Hero() {
   const stats = [
-    { icon: TrendingUp, value: '+120%', label: 'de circulation sanguine' },
-    { icon: Users, value: '1500+', label: 'ans de tradition' },
-    { icon: Award, value: '#1', label: 'bien-être japonais' },
+    { icon: TrendingUp, value: '63€', label: 'pour commencer' },
+    { icon: Users, value: '100%', label: 'sur rendez-vous' },
+    { icon: Award, value: 'Vecoux', label: 'au cœur des Vosges' },
   ]
 
   return (
@@ -27,7 +27,7 @@ export function Hero() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-900/20 mb-6"
             >
               <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                Tradition japonaise ancestrale
+                Un soin japonais, au cœur des Vosges
               </span>
             </motion.div>
 
@@ -50,9 +50,9 @@ export function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Découvrez le <strong>Head Spa</strong>, une expérience holistique née au Japon il y a plus de 1500 ans.
-              Alliant massage du cuir chevelu, aromathérapie et relaxation profonde, cette tradition révolutionnaire
-              augmente jusqu&apos;à 120% la circulation sanguine pour une transformation complète.
+              Le <strong>Head Spa</strong>, c&apos;est un soin du cuir chevelu venu du Japon : massage,
+              shampooing thérapeutique, détente profonde. Gwenaëlle vous reçoit à Vecoux,
+              sur rendez-vous, dans un cadre calme et chaleureux.
             </motion.p>
 
             {/* Stats */}

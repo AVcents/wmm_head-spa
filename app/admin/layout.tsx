@@ -51,7 +51,8 @@ export default function AdminLayout({
           <Menu className="h-6 w-6 text-foreground" />
         </button>
         <div className="flex items-center gap-2">
-          <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={24} height={24} className="h-6 w-auto" />
+          <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={24} height={24} className="h-6 w-auto block dark:hidden" />
+          <Image src="/images/Logo-Kalm-Head-spa-white.png" alt="Kalm Headspa" width={24} height={24} className="h-6 w-auto hidden dark:block" />
           <span className="font-serif font-semibold text-foreground">Admin</span>
         </div>
         <div className="w-10" />
@@ -102,7 +103,8 @@ function SidebarContent({
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={40} height={40} className="h-10 w-auto" />
+            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={40} height={40} className="h-10 w-auto block dark:hidden" />
+            <Image src="/images/Logo-Kalm-Head-spa-white.png" alt="Kalm Headspa" width={40} height={40} className="h-10 w-auto hidden dark:block" />
             <div>
               <h2 className="font-serif font-bold text-foreground">Kalm</h2>
               <p className="text-xs text-foreground-muted">Administration</p>

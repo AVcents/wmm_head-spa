@@ -12,36 +12,36 @@ export default function LeHeadspaPage() {
   const timeline = [
     {
       year: '1500+',
-      title: 'Les Origines Ancestrales',
-      description: 'L\'Anma, technique de massage japonaise thérapeutique vieille de plus de 1500 ans, pose les fondations du Head Spa moderne.',
+      title: 'Les origines',
+      description: 'Le massage japonais traditionnel (Anma) est pratiqué depuis plus de 1500 ans. C\'est lui qui a inspiré ce que l\'on appelle aujourd\'hui le Head Spa.',
     },
     {
       year: '1990s',
-      title: 'La Modernisation',
-      description: 'Les salons japonais révolutionnent les soins capillaires en formalisant le concept de Head Spa comme expérience de luxe.',
+      title: 'Le Head Spa naît dans les salons',
+      description: 'Les instituts japonais formalisent le concept et le proposent comme un soin à part entière. Le Head Spa devient une institution.',
     },
     {
       year: '2020+',
-      title: 'L\'Expansion Mondiale',
-      description: 'Le Head Spa devient une tendance wellness mondiale, avec une croissance de +40% par an et des millions d\'adeptes.',
+      title: 'Le monde entier en parle',
+      description: 'TikTok, YouTube, presse beauté... Le Head Spa touche des millions de personnes. Et pour cause — ça fait vraiment du bien.',
     },
   ]
 
   const philosophy = [
     {
       icon: Heart,
-      title: 'Harmonie Corps-Esprit',
-      description: 'Le concept japonais "Kokoro to Karada" : esprit et corps indissociables.',
+      title: 'La tête et le corps, ensemble',
+      description: 'Les Japonais le savent depuis longtemps : quand la tête va, le corps suit. Le Head Spa agit sur les deux à la fois.',
     },
     {
       icon: Sparkles,
-      title: 'Santé du Cuir Chevelu',
-      description: 'Le cuir chevelu est la "terre" qui nourrit les cheveux. Un cuir chevelu sain = des cheveux sains.',
+      title: 'Le cuir chevelu, d\'abord',
+      description: 'Avant de s\'occuper des cheveux, on s\'occupe de ce qui les nourrit. Un cuir chevelu sain, ce sont des cheveux qui poussent mieux, plus forts.',
     },
     {
       icon: Leaf,
-      title: 'Détoxification Naturelle',
-      description: 'Élimination des toxines pour une purification profonde et un bien-être durable.',
+      title: 'Des produits qui font sens',
+      description: 'Chez Kalm, on utilise des soins naturels, adaptés à votre cuir chevelu. Pas de superflu — juste ce dont vous avez besoin.',
     },
   ]
 
@@ -61,7 +61,7 @@ export default function LeHeadspaPage() {
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-900/20 mb-6">
                   <Sparkles className="h-4 w-4 text-primary-600 dark:text-primary-400" />
                   <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                    Plus de 1500 ans de tradition
+                    Une pratique japonaise millénaire
                   </span>
                 </div>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-foreground mb-6">
@@ -69,12 +69,12 @@ export default function LeHeadspaPage() {
                   <span className="text-primary-600 dark:text-primary-400">Head Spa</span>
                 </h1>
                 <p className="text-lg text-foreground-secondary leading-relaxed mb-8">
-                  Le Head Spa est bien plus qu&apos;un simple soin capillaire. C&apos;est une tradition japonaise
-                  millénaire qui allie sagesse ancestrale et innovation moderne pour offrir une expérience
-                  holistique unique de bien-être et de transformation.
+                  Le Head Spa, c&apos;est un soin complet du cuir chevelu et des cheveux, venu du Japon.
+                  Massage, shampooing thérapeutique, huiles nourrissantes — tout est pensé pour vous faire
+                  du bien, de la tête aux épaules.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Link href="/bon-cadeau">
+                  <Link href="/reservation">
                     <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-primary-600 to-primary-700">
                       Réserver une séance
                     </Button>
@@ -116,10 +116,10 @@ export default function LeHeadspaPage() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground mb-4">
-                Une tradition millénaire
+                Une tradition qui vient de loin
               </h2>
               <p className="text-lg text-foreground-secondary max-w-2xl mx-auto">
-                Du massage thérapeutique Anma à la tendance wellness mondiale d&apos;aujourd&apos;hui
+                Le Head Spa n&apos;est pas une invention récente — il puise ses racines dans le massage japonais traditionnel
               </p>
             </motion.div>
 
@@ -161,10 +161,10 @@ export default function LeHeadspaPage() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground mb-4">
-                Notre philosophie
+                Ce qui guide chaque soin
               </h2>
               <p className="text-lg text-foreground-secondary max-w-2xl mx-auto">
-                Une approche holistique inspirée de la sagesse japonaise
+                Quelques idées simples, venues du Japon, qui guident la façon dont je prends soin de vous
               </p>
             </motion.div>
 
@@ -201,10 +201,11 @@ export default function LeHeadspaPage() {
                 transition={{ duration: 0.6 }}
               >
                 <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground mb-4">
-                  Une approche scientifiquement prouvée
+                  Pourquoi ça marche vraiment
                 </h2>
                 <p className="text-lg text-foreground-secondary">
-                  Le Head Spa n&apos;est pas qu&apos;une tradition : c&apos;est une pratique dont les bienfaits sont validés par la science moderne.
+                  Le Head Spa n&apos;est pas une tendance. C&apos;est une pratique qui existe depuis des générations,
+                  et dont les bienfaits se ressentent dès la première séance.
                 </p>
               </motion.div>
 
@@ -216,16 +217,16 @@ export default function LeHeadspaPage() {
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
                 <div className="p-6 rounded-xl bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-200 dark:border-primary-800 text-center">
-                  <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">+120%</div>
-                  <div className="text-sm text-foreground-secondary">Augmentation de la circulation sanguine</div>
+                  <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">✨</div>
+                  <div className="text-sm text-foreground-secondary">Circulation relancée dès la séance</div>
                 </div>
                 <div className="p-6 rounded-xl bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-200 dark:border-primary-800 text-center">
-                  <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">-40%</div>
-                  <div className="text-sm text-foreground-secondary">Réduction du cortisol (stress)</div>
+                  <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">😌</div>
+                  <div className="text-sm text-foreground-secondary">Moins de stress, tête plus légère</div>
                 </div>
                 <div className="p-6 rounded-xl bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-200 dark:border-primary-800 text-center">
                   <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">72h</div>
-                  <div className="text-sm text-foreground-secondary">D&apos;activation génétique capillaire</div>
+                  <div className="text-sm text-foreground-secondary">D&apos;effets sur le cuir chevelu</div>
                 </div>
               </motion.div>
 
@@ -237,10 +238,10 @@ export default function LeHeadspaPage() {
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
                 <p className="text-foreground-secondary leading-relaxed">
-                  Des études récentes démontrent qu&apos;après 72 heures post-traitement, des modifications de l&apos;expression
-                  génétique dans les cellules de la papille dermique déclenchent des changements dans les gènes NOGGIN, BMP4 et SMAD4,
-                  tous liés à la croissance capillaire. Le massage stimule également le drainage lymphatique, permettant au corps
-                  d&apos;éliminer significativement plus de toxines.
+                  Le massage du cuir chevelu relance la circulation sanguine en profondeur — vos racines sont mieux
+                  irriguées, vos cheveux mieux nourris. Le soin élimine aussi les résidus et impuretés qui s&apos;accumulent
+                  au fil du temps. Et les effets ne s&apos;arrêtent pas à la sortie du salon : votre cuir chevelu continue
+                  à en bénéficier pendant plusieurs jours.
                 </p>
               </motion.div>
             </div>
@@ -259,13 +260,14 @@ export default function LeHeadspaPage() {
             >
               <div className="relative z-10">
                 <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white mb-4">
-                  Prêt à découvrir le Head Spa ?
+                  Curieuse ? Curieux ?
                 </h2>
                 <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-                  Offrez-vous une expérience unique alliant tradition japonaise millénaire et bien-être moderne.
+                  C&apos;est normal d&apos;hésiter quand on ne connaît pas encore. N&apos;hésitez pas à m&apos;appeler,
+                  je vous explique tout et on choisit ensemble le soin qui vous convient.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/bon-cadeau">
+                  <Link href="/reservation">
                     <Button size="lg" variant="outline" className="bg-white text-primary-600 hover:bg-white/90 border-0">
                       Réserver maintenant
                     </Button>

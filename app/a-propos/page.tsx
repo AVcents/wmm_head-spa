@@ -55,7 +55,7 @@ export default function AProposPage() {
                   « Cet endroit que j&apos;ai imaginé pour que vous soyez heureux(ses) de me rejoindre. »
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Link href="/bon-cadeau">
+                  <Link href="/reservation">
                     <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-primary-600 to-primary-700">
                       Prendre rendez-vous
                     </Button>
@@ -283,7 +283,7 @@ export default function AProposPage() {
                   J&apos;ai hâte de vous accueillir et de vous offrir ce moment rien que pour vous.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/bon-cadeau">
+                  <Link href="/reservation">
                     <Button size="lg" variant="outline" className="bg-white text-primary-600 hover:bg-white/90 border-0">
                       Prendre rendez-vous
                     </Button>

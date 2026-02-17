@@ -47,7 +47,7 @@ export function ImageGallery() {
             <span className="text-primary-600 dark:text-primary-400">Kalm</span>
           </h2>
           <p className="text-lg text-foreground-secondary max-w-2xl mx-auto">
-            Un espace dédié à votre bien-être, où tradition asiatique et modernité se rencontrent
+            Un petit salon chaleureux, pensé pour que vous vous sentiez tout de suite à l&apos;aise
           </p>
         </motion.div>
 

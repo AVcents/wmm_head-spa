@@ -9,18 +9,18 @@ import Link from 'next/link'
 const services = [
   {
     name: 'Headspa Japonais',
-    duration: '60 min',
-    price: '65€',
+    duration: '45-75 min',
+    price: 'À partir de 63€',
     description:
-      'Rituel traditionnel japonais combinant massage crânien, soins capillaires et moments de pure relaxation.',
+      'Le soin phare du salon. Massage du cuir chevelu, shampooing thérapeutique et détente profonde — vous repartez la tête légère et les cheveux nourris.',
     image: 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=600&q=80',
   },
   {
     name: 'Headspa Holistique',
-    duration: '90 min',
-    price: '85€',
+    duration: '105 min',
+    price: 'À partir de 150€',
     description:
-      'Approche globale du bien-être intégrant massage, aromathérapie et techniques de relaxation profonde.',
+      'Pour celles et ceux qui veulent vraiment décrocher. Une heure quarante-cinq de soin complet : massage, huiles, aromathérapie. Une vraie bulle de douceur.',
     image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=600&q=80',
   },
   {
@@ -28,7 +28,7 @@ const services = [
     duration: '60 min',
     price: '70€',
     description:
-      'Massage relaxant du corps entier pour libérer les tensions et retrouver harmonie physique et mentale.',
+      'Du bout des pieds jusqu\'aux épaules. Un massage qui libère les tensions du corps et vous laisse dans un état de bien-être que vous n\'attendiez pas.',
     image: 'https://images.unsplash.com/photo-1600334129128-685c5582fd35?w=600&q=80',
   },
 ]
@@ -48,7 +48,7 @@ export function ServicesPreview() {
             Nos prestations
           </h2>
           <p className="text-lg text-foreground-secondary max-w-2xl mx-auto">
-            Choisissez l&apos;expérience qui vous correspond
+            Que vous veniez pour vous détendre, prendre soin de vos cheveux, ou les deux — il y a un soin fait pour vous
           </p>
         </motion.div>
 
@@ -98,9 +98,11 @@ export function ServicesPreview() {
                   {service.description}
                 </p>
 
-                <Button variant="outline" className="w-full">
-                  En savoir plus
-                </Button>
+                <Link href="/prestations" className="w-full">
+                  <Button variant="outline" className="w-full">
+                    En savoir plus
+                  </Button>
+                </Link>
               </div>
             </motion.div>
           ))}

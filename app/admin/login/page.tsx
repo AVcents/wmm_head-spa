@@ -43,7 +43,8 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mb-4">
-            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={64} height={64} className="h-16 w-auto mx-auto" />
+            <Image src="/images/Logo-Kalm-Head-spa.png" alt="Kalm Headspa" width={64} height={64} className="h-16 w-auto mx-auto block dark:hidden" />
+            <Image src="/images/Logo-Kalm-Head-spa-white.png" alt="Kalm Headspa" width={64} height={64} className="h-16 w-auto mx-auto hidden dark:block" />
           </div>
           <h1 className="text-3xl font-serif font-bold text-foreground">
             Kalm Headspa

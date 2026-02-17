@@ -28,12 +28,11 @@ export function CTASection() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white mb-6">
-            Prêt à vous ressourcer ?
+            Envie de prendre soin de vous ?
           </h2>
           <p className="text-lg sm:text-xl text-white/90 mb-10 leading-relaxed">
-            Offrez-vous un moment de détente absolue dans notre espace dédié à
-            votre bien-être. Gwenaëlle vous accueille dans un cadre chaleureux et
-            apaisant.
+            Appelez-moi, envoyez un message — je serai ravie d&apos;en parler avec vous
+            et de trouver le soin qui vous correspond. À bientôt au salon.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

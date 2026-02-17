@@ -45,7 +45,14 @@ export function Header() {
               alt="Kalm Headspa"
               width={48}
               height={48}
-              className="h-12 w-auto"
+              className="h-12 w-auto block dark:hidden"
+            />
+          <Image
+              src="/images/Logo-Kalm-Head-spa-white.png"
+              alt="Kalm Headspa"
+              width={48}
+              height={48}
+              className="h-12 w-auto hidden dark:block"
             />
           <div className="flex flex-col">
             <span className="text-3xl font-script text-foreground leading-none">
@@ -74,9 +81,8 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           <ThemeToggle />
           <a href="tel:0621571222">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm">
               <Phone className="h-4 w-4" />
-              <span className="hidden lg:inline">06 21 57 12 22</span>
             </Button>
           </a>
           <Link href="/reservation">

@@ -58,10 +58,10 @@ export function Footer() {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <h3 className="text-2xl font-serif font-bold text-foreground mb-2">
-              Restez informé de nos actualités
+              Un peu de douceur dans votre boîte mail ?
             </h3>
             <p className="text-foreground-secondary mb-6">
-              Recevez nos offres exclusives et conseils bien-être directement dans votre boîte mail
+              Actualités du salon, conseils et offres — de temps en temps, sans vous inonder
             </p>
             <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <Input
@@ -96,15 +96,22 @@ export function Footer() {
                   alt="Kalm Headspa"
                   width={48}
                   height={48}
-                  className="h-12 w-auto"
+                  className="h-12 w-auto block dark:hidden"
+                />
+                <Image
+                  src="/images/Logo-Kalm-Head-spa-white.png"
+                  alt="Kalm Headspa"
+                  width={48}
+                  height={48}
+                  className="h-12 w-auto hidden dark:block"
                 />
                 <h3 className="text-lg font-serif font-semibold text-foreground">
                   Kalm Headspa
                 </h3>
               </div>
               <p className="text-sm text-foreground-secondary leading-relaxed mb-4">
-                Espace de bien-être dédié aux soins capillaires et à la relaxation profonde.
-                Découvrez le Head Spa, une tradition japonaise ancestrale.
+                Un petit salon chaleureux à Vecoux, dans les Vosges. Gwenaëlle vous accueille
+                pour des soins Head Spa et massages, sur rendez-vous.
               </p>
               <div className="flex space-x-3">
                 <a

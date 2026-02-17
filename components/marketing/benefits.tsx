@@ -6,51 +6,51 @@ import { motion } from 'framer-motion'
 const benefits = [
   {
     icon: Brain,
-    title: 'Réduction du Stress',
+    title: 'Moins de stress',
     description:
-      'Diminution de 30 à 40% du cortisol (hormone du stress) et libération d\'endorphines pour un bien-être mental profond.',
-    stat: '-40%',
-    statLabel: 'de cortisol',
+      'Le massage du cuir chevelu détend profondément. Beaucoup de clientes repartent avec cette sensation de tête vide — dans le bon sens du terme.',
+    stat: '😮‍💨',
+    statLabel: 'enfin relâché',
   },
   {
     icon: TrendingUp,
-    title: 'Stimulation Capillaire',
+    title: 'Des cheveux qui respirent',
     description:
-      'Jusqu\'à 120% d\'augmentation de la circulation sanguine dans le cuir chevelu pour nourrir intensément les follicules pileux.',
-    stat: '+120%',
-    statLabel: 'circulation',
+      'La circulation sanguine est relancée au niveau du cuir chevelu. Vos racines sont mieux nourries, vos cheveux plus beaux naturellement.',
+    stat: '✨',
+    statLabel: 'cheveux vivants',
   },
   {
     icon: Droplets,
-    title: 'Détoxification Profonde',
+    title: 'Un cuir chevelu purifié',
     description:
-      'Drainage lymphatique stimulé pour éliminer toxines et impuretés, favorisant un environnement sain pour vos cheveux.',
-    stat: '72h',
-    statLabel: 'd\'effet',
+      'Le soin élimine les impuretés accumulées et rééquilibre votre cuir chevelu. Idéal si vous vous sentez à l\'étroit dans vos cheveux.',
+    stat: '💧',
+    statLabel: 'cuir chevelu sain',
   },
   {
     icon: Sparkles,
-    title: 'Qualité Capillaire',
+    title: 'Des cheveux plus beaux',
     description:
-      'Cheveux plus brillants, plus forts et plus volumineux grâce à une meilleure nutrition des racines.',
+      'Plus brillants, plus doux, plus forts. Pas besoin de miracle — juste un bon soin fait avec les bons gestes et les bons produits.',
     stat: '100%',
     statLabel: 'naturel',
   },
   {
     icon: Heart,
-    title: 'Bien-être Holistique',
+    title: 'Une vraie pause',
     description:
-      'Soulagement des maux de tête, amélioration du sommeil et équilibre émotionnel dans un environnement zen.',
+      'On s\'occupe de vous, et de vous seulement. Maux de tête, tension, fatigue — tout ça fond pendant la séance.',
     stat: '60-90',
-    statLabel: 'minutes',
+    statLabel: 'minutes pour soi',
   },
   {
     icon: Shield,
-    title: 'Équilibre du Cuir Chevelu',
+    title: 'Des effets qui durent',
     description:
-      'Régulation du pH, élimination des pellicules et prévention des problèmes dermatologiques pour une santé optimale.',
-    stat: '∞',
-    statLabel: 'durabilité',
+      'Le mieux-être ressenti après une séance ne s\'arrête pas à la sortie du salon. Le cuir chevelu continue à en profiter les jours suivants.',
+    stat: '72h',
+    statLabel: 'd\'effet',
   },
 ]
 
@@ -68,15 +68,15 @@ export function Benefits() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-900/20 mb-4">
             <Sparkles className="h-4 w-4 text-primary-600 dark:text-primary-400" />
             <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-              Bienfaits scientifiquement prouvés
+              Ce que vous allez ressentir
             </span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground mb-4">
-            Une transformation complète
+            Du bien, vraiment
           </h2>
           <p className="text-lg text-foreground-secondary max-w-3xl mx-auto">
-            Le Head Spa va bien au-delà d&apos;un simple soin. C&apos;est une expérience holistique qui agit simultanément
-            sur votre corps, votre esprit et vos cheveux, avec des résultats mesurables et durables.
+            Le Head Spa, c&apos;est bien plus qu&apos;un soin pour les cheveux. En une séance, vous vous sentez plus léger,
+            plus calme, avec des cheveux et un cuir chevelu qui respirent enfin.
           </p>
         </motion.div>
 
@@ -129,12 +129,13 @@ export function Benefits() {
           <div className="flex items-center justify-center gap-3 mb-4">
             <Shield className="h-6 w-6 text-primary-600 dark:text-primary-400" />
             <h3 className="text-xl font-serif font-bold text-foreground">
-              Approche scientifique et holistique
+              Une pratique qui a fait ses preuves
             </h3>
           </div>
           <p className="text-center text-foreground-secondary max-w-3xl mx-auto">
-            Des études démontrent qu&apos;après 72 heures post-traitement, des modifications de l&apos;expression génétique
-            dans les cellules capillaires (gènes NOGGIN, BMP4, SMAD4) stimulent activement la croissance et la santé des cheveux.
+            Le Head Spa ne date pas d&apos;hier. Cette pratique japonaise, affinée depuis des générations,
+            allie massage professionnel, soins du cuir chevelu et produits adaptés. Les résultats se voient —
+            et se ressentent — dès la première séance.
           </p>
         </motion.div>
       </div>

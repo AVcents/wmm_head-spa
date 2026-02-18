@@ -641,13 +641,10 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
   // Générer le PDF chèque cadeau (base64 pour compatibilité Resend v6)
   let pdfAttachment: { filename: string; content: string } | undefined
   try {
-    const expiry = new Date()
-    expiry.setFullYear(expiry.getFullYear() + 1)
-    const expiryDate = expiry.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
     const pdfBytes = await generateGiftCardPDF({
-      personalMessage: data.personalMessage,
-      expiryDate,
+      recipientName: `${data.recipientFirstName} ${data.recipientLastName}`,
+      serviceName: data.serviceName,
+      giftCardCode: data.giftCardCode,
     })
     pdfAttachment = {
       filename: `bon-cadeau-kalm-${data.giftCardCode}.pdf`,

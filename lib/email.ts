@@ -3,6 +3,7 @@
 // ============================================
 
 import { Resend } from 'resend'
+import { generateGiftCardPDF } from './pdf'
 
 let resend: Resend | null = null
 
@@ -635,15 +636,45 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
     salonEmail: SALON_EMAIL,
   })
 
+  // Générer le PDF chèque cadeau
+  let pdfAttachment: { filename: string; content: Buffer } | undefined
+  try {
+    // Calculer la date d'expiration : 1 an à partir d'aujourd'hui
+    const expiry = new Date()
+    expiry.setFullYear(expiry.getFullYear() + 1)
+    const expiryDate = expiry.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+    const pdfBytes = await generateGiftCardPDF({
+      personalMessage: data.personalMessage,
+      expiryDate,
+    })
+    pdfAttachment = {
+      filename: `bon-cadeau-kalm-${data.giftCardCode}.pdf`,
+      content: Buffer.from(pdfBytes),
+    }
+    console.log('[sendGiftCardEmails] PDF généré, taille:', pdfAttachment.content.length, 'octets')
+  } catch (err) {
+    console.error('[sendGiftCardEmails] Erreur génération PDF:', err)
+    // On continue sans le PDF plutôt que de bloquer l'envoi
+  }
+
+  const recipientSend = {
+    label: 'recipient',
+    to: data.recipientEmail,
+    subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
+    html: buildGiftCardRecipientHtml(data),
+    ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+  }
+
   const sends = [
     { label: 'buyer', to: data.buyerEmail, subject: `Votre bon cadeau Kalm Headspa — ${data.giftCardCode}`, html: buildGiftCardBuyerHtml(data) },
-    { label: 'recipient', to: data.recipientEmail, subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`, html: buildGiftCardRecipientHtml(data) },
+    recipientSend,
     { label: 'salon', to: SALON_EMAIL, subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`, html: buildGiftCardSalonHtml(data) },
   ]
 
   const results = await Promise.allSettled(
-    sends.map(({ to, subject, html }) =>
-      client.emails.send({ from: `Kalm Headspa <${FROM}>`, to, subject, html })
+    sends.map(({ to, subject, html, ...rest }) =>
+      client.emails.send({ from: `Kalm Headspa <${FROM}>`, to, subject, html, ...rest })
     )
   )
 
@@ -681,21 +712,42 @@ export async function sendBookingEmails(data: BookingEmailData): Promise<void> {
   const dateStr = `${formatDateFr(data.date)} à ${formatTimeFr(data.date)}`
   const client = getResend()
 
-  await Promise.allSettled([
-    // Email au client
-    client.emails.send({
-      from: `Kalm Headspa <${FROM}>`,
-      to: data.clientEmail,
-      subject: `Réservation confirmée — ${serviceDisplay} · ${dateStr}`,
-      html: buildClientHtml(data),
-    }),
+  console.log('[sendBookingEmails] Sending emails for booking', data.bookingId, {
+    from: FROM,
+    clientEmail: data.clientEmail,
+    salonEmail: SALON_EMAIL,
+  })
 
-    // Notification au salon
-    client.emails.send({
-      from: `Kalm Headspa <${FROM}>`,
-      to: SALON_EMAIL,
-      subject: `[Nouvelle résa] ${data.clientName} — ${serviceDisplay} · ${dateStr}`,
-      html: buildSalonHtml(data),
-    }),
-  ])
+  const sends = [
+    { label: 'client', to: data.clientEmail, subject: `Réservation confirmée — ${serviceDisplay} · ${dateStr}`, html: buildClientHtml(data) },
+    { label: 'salon', to: SALON_EMAIL, subject: `[Nouvelle résa] ${data.clientName} — ${serviceDisplay} · ${dateStr}`, html: buildSalonHtml(data) },
+  ]
+
+  const results = await Promise.allSettled(
+    sends.map(({ to, subject, html }) =>
+      client.emails.send({ from: `Kalm Headspa <${FROM}>`, to, subject, html })
+    )
+  )
+
+  const failures: string[] = []
+
+  results.forEach((result, i) => {
+    const label = sends[i]!.label
+    if (result.status === 'rejected') {
+      console.error(`[sendBookingEmails] ${label} REJECTED:`, result.reason)
+      failures.push(`${label}: ${String(result.reason)}`)
+    } else {
+      const { data: emailData, error } = result.value
+      if (error) {
+        console.error(`[sendBookingEmails] ${label} ERROR:`, JSON.stringify(error))
+        failures.push(`${label}: ${JSON.stringify(error)}`)
+      } else {
+        console.log(`[sendBookingEmails] ${label} OK — id:`, emailData?.id)
+      }
+    }
+  })
+
+  if (failures.length > 0) {
+    throw new Error(`Email booking failures: ${failures.join(' | ')}`)
+  }
 }

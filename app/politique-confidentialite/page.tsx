@@ -17,6 +17,7 @@ export default function PolitiqueConfidentialitePage() {
           Gwenaëlle GUIOT<br />
           65 Rue du Centre<br />
           88200 Vecoux<br />
+          SIRET : 882 229 826 00012<br />
           Email : <a href="mailto:contact@kalm-headspa.fr" className="text-primary-600 dark:text-primary-400 hover:underline">contact@kalm-headspa.fr</a><br />
           Téléphone : <a href="tel:0621571222" className="text-primary-600 dark:text-primary-400 hover:underline">06 21 57 12 22</a></p>
         </>

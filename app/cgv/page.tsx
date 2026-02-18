@@ -13,6 +13,9 @@ export default function CGVPage() {
       content: (
         <>
           <p>Les présentes Conditions Générales de Vente (CGV) s'appliquent à l'ensemble des prestations de services et ventes de bons cadeaux proposés par Kalm Headspa.</p>
+          <p className="mt-4"><strong>Kalm Headspa</strong> — Auto-entrepreneur<br />
+          65 Rue du Centre, 88200 Vecoux<br />
+          SIRET : 882 229 826 00012</p>
           <p className="mt-4">Toute commande de prestation ou achat de bon cadeau implique l'acceptation sans réserve des présentes CGV.</p>
           <p className="mt-4"><strong>Services proposés :</strong></p>
           <ul className="list-disc list-inside mt-2 space-y-1">

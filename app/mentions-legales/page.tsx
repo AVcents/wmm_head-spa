@@ -15,7 +15,7 @@ export default function MentionsLegalesPage() {
           <p><strong>Raison sociale :</strong> Kalm Headspa</p>
           <p><strong>Forme juridique :</strong> Auto-entrepreneur</p>
           <p><strong>Siège social :</strong> 65 Rue du Centre, 88200 Vecoux, France</p>
-          <p><strong>SIRET :</strong> [À compléter]</p>
+          <p><strong>SIRET :</strong> 882 229 826 00012</p>
           <p><strong>Responsable de publication :</strong> Gwenaëlle GUIOT</p>
         </>
       ),

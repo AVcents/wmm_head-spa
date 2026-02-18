@@ -13,7 +13,7 @@ const services = [
     price: 'À partir de 63€',
     description:
       'Le soin phare du salon. Massage du cuir chevelu, shampooing thérapeutique et détente profonde — vous repartez la tête légère et les cheveux nourris.',
-    image: 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=600&q=80',
+    image: '/images/woman-enjoying-head-spa-relaxation-scalp-treatment-2026-01-23-18-03-50-utc.jpg',
   },
   {
     name: 'Headspa Holistique',
@@ -21,7 +21,7 @@ const services = [
     price: 'À partir de 150€',
     description:
       'Pour celles et ceux qui veulent vraiment décrocher. Une heure quarante-cinq de soin complet : massage, huiles, aromathérapie. Une vraie bulle de douceur.',
-    image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=600&q=80',
+    image: '/images/young-woman-enjoying-head-spa-water-therapy-2026-01-23-18-03-50-utc.jpg',
   },
   {
     name: 'Massage Corps Complet',
@@ -29,7 +29,7 @@ const services = [
     price: '70€',
     description:
       'Du bout des pieds jusqu\'aux épaules. Un massage qui libère les tensions du corps et vous laisse dans un état de bien-être que vous n\'attendiez pas.',
-    image: 'https://images.unsplash.com/photo-1600334129128-685c5582fd35?w=600&q=80',
+    image: '/images/masseuse-holding-aromatherapy-sachets-over-woman-s-2026-01-05-01-12-22-utc.jpg',
   },
 ]
 

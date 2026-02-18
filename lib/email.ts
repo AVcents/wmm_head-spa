@@ -636,10 +636,11 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
     salonEmail: SALON_EMAIL,
   })
 
-  // Générer le PDF chèque cadeau
-  let pdfAttachment: { filename: string; content: Buffer } | undefined
+  const FROM_LABEL = `Kalm Headspa <${FROM}>`
+
+  // Générer le PDF chèque cadeau (base64 pour compatibilité Resend v6)
+  let pdfAttachment: { filename: string; content: string } | undefined
   try {
-    // Calculer la date d'expiration : 1 an à partir d'aujourd'hui
     const expiry = new Date()
     expiry.setFullYear(expiry.getFullYear() + 1)
     const expiryDate = expiry.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -650,54 +651,58 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
     })
     pdfAttachment = {
       filename: `bon-cadeau-kalm-${data.giftCardCode}.pdf`,
-      content: Buffer.from(pdfBytes),
+      content: Buffer.from(pdfBytes).toString('base64'),
     }
-    console.log('[sendGiftCardEmails] PDF généré, taille:', pdfAttachment.content.length, 'octets')
+    console.log('[sendGiftCardEmails] PDF généré, taille:', pdfBytes.length, 'octets')
   } catch (err) {
     console.error('[sendGiftCardEmails] Erreur génération PDF:', err)
     // On continue sans le PDF plutôt que de bloquer l'envoi
   }
 
-  const recipientSend = {
-    label: 'recipient',
-    to: data.recipientEmail,
-    subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
-    html: buildGiftCardRecipientHtml(data),
-    ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+  // Envoi des 3 emails de façon indépendante — chaque envoi est isolé
+  // pour qu'une erreur sur l'un ne bloque pas les autres.
+
+  // 1. Email acheteur
+  try {
+    const res = await client.emails.send({
+      from: FROM_LABEL,
+      to: data.buyerEmail,
+      subject: `Votre bon cadeau Kalm Headspa — ${data.giftCardCode}`,
+      html: buildGiftCardBuyerHtml(data),
+    })
+    if (res.error) console.error('[sendGiftCardEmails] buyer ERROR:', JSON.stringify(res.error))
+    else console.log('[sendGiftCardEmails] buyer OK — id:', res.data?.id)
+  } catch (err) {
+    console.error('[sendGiftCardEmails] buyer FAILED:', err)
   }
 
-  const sends = [
-    { label: 'buyer', to: data.buyerEmail, subject: `Votre bon cadeau Kalm Headspa — ${data.giftCardCode}`, html: buildGiftCardBuyerHtml(data) },
-    recipientSend,
-    { label: 'salon', to: SALON_EMAIL, subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`, html: buildGiftCardSalonHtml(data) },
-  ]
+  // 2. Email destinataire (avec PDF si disponible)
+  try {
+    const res = await client.emails.send({
+      from: FROM_LABEL,
+      to: data.recipientEmail,
+      subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
+      html: buildGiftCardRecipientHtml(data),
+      ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+    })
+    if (res.error) console.error('[sendGiftCardEmails] recipient ERROR:', JSON.stringify(res.error))
+    else console.log('[sendGiftCardEmails] recipient OK — id:', res.data?.id)
+  } catch (err) {
+    console.error('[sendGiftCardEmails] recipient FAILED:', err)
+  }
 
-  const results = await Promise.allSettled(
-    sends.map(({ to, subject, html, ...rest }) =>
-      client.emails.send({ from: `Kalm Headspa <${FROM}>`, to, subject, html, ...rest })
-    )
-  )
-
-  const failures: string[] = []
-
-  results.forEach((result, i) => {
-    const label = sends[i]!.label
-    if (result.status === 'rejected') {
-      console.error(`[sendGiftCardEmails] ${label} REJECTED:`, result.reason)
-      failures.push(`${label}: ${String(result.reason)}`)
-    } else {
-      const { data: emailData, error } = result.value
-      if (error) {
-        console.error(`[sendGiftCardEmails] ${label} ERROR:`, JSON.stringify(error))
-        failures.push(`${label}: ${JSON.stringify(error)}`)
-      } else {
-        console.log(`[sendGiftCardEmails] ${label} OK — id:`, emailData?.id)
-      }
-    }
-  })
-
-  if (failures.length > 0) {
-    throw new Error(`Email failures: ${failures.join(' | ')}`)
+  // 3. Email salon
+  try {
+    const res = await client.emails.send({
+      from: FROM_LABEL,
+      to: SALON_EMAIL,
+      subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`,
+      html: buildGiftCardSalonHtml(data),
+    })
+    if (res.error) console.error('[sendGiftCardEmails] salon ERROR:', JSON.stringify(res.error))
+    else console.log('[sendGiftCardEmails] salon OK — id:', res.data?.id)
+  } catch (err) {
+    console.error('[sendGiftCardEmails] salon FAILED:', err)
   }
 }
 

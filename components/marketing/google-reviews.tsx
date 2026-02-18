@@ -65,9 +65,8 @@ async function fetchGoogleReviews(): Promise<PlaceResult | null> {
     const data: PlaceDetailsNew = await res.json()
 
     // Normaliser vers l'ancienne interface pour ne pas changer le rendu
-    return {
-      rating: data.rating,
-      user_ratings_total: data.userRatingCount,
+    // (spread conditionnel requis par exactOptionalPropertyTypes: true)
+    const result: PlaceResult = {
       reviews: (data.reviews ?? []).map((r) => ({
         author_name: r.authorAttribution.displayName,
         profile_photo_url: r.authorAttribution.photoUri ?? '',
@@ -76,6 +75,9 @@ async function fetchGoogleReviews(): Promise<PlaceResult | null> {
         relative_time_description: r.relativePublishTimeDescription,
       })),
     }
+    if (data.rating !== undefined) result.rating = data.rating
+    if (data.userRatingCount !== undefined) result.user_ratings_total = data.userRatingCount
+    return result
   } catch (err) {
     console.error('[GoogleReviews] Fetch error:', err)
     return null

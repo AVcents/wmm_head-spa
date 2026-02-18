@@ -1,11 +1,29 @@
 // ============================================
 // Avis Google — Kalm Headspa
-// Server Component — fetch direct Places API
+// Server Component — fetch Places API (New)
 // Revalidation automatique toutes les heures
 // ============================================
 
 import { Star } from 'lucide-react'
 
+// Interfaces Places API (New) — v1
+interface PlaceReviewNew {
+  authorAttribution: {
+    displayName: string
+    photoUri?: string
+  }
+  rating: number
+  text?: { text: string }
+  relativePublishTimeDescription: string
+}
+
+interface PlaceDetailsNew {
+  rating?: number
+  userRatingCount?: number
+  reviews?: PlaceReviewNew[]
+}
+
+// Interface normalisée pour le rendu
 interface GoogleReview {
   author_name: string
   profile_photo_url: string
@@ -14,16 +32,13 @@ interface GoogleReview {
   relative_time_description: string
 }
 
-interface PlaceDetails {
-  result?: {
-    rating?: number
-    user_ratings_total?: number
-    reviews?: GoogleReview[]
-  }
-  status?: string
+interface PlaceResult {
+  rating?: number
+  user_ratings_total?: number
+  reviews?: GoogleReview[]
 }
 
-async function fetchGoogleReviews(): Promise<PlaceDetails['result'] | null> {
+async function fetchGoogleReviews(): Promise<PlaceResult | null> {
   const apiKey = process.env['GOOGLE_PLACES_API_KEY']
   const placeId = process.env['GOOGLE_PLACE_ID']
 
@@ -33,22 +48,34 @@ async function fetchGoogleReviews(): Promise<PlaceDetails['result'] | null> {
   }
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,reviews&language=fr&reviews_sort=newest&key=${apiKey}`
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const url = `https://places.googleapis.com/v1/places/${placeId}?languageCode=fr`
+    const res = await fetch(url, {
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'rating,userRatingCount,reviews',
+      },
+      next: { revalidate: 3600 },
+    })
 
     if (!res.ok) {
-      console.error('[GoogleReviews] Erreur HTTP:', res.status)
+      console.error('[GoogleReviews] Erreur HTTP:', res.status, await res.text())
       return null
     }
 
-    const data: PlaceDetails = await res.json()
+    const data: PlaceDetailsNew = await res.json()
 
-    if (data.status !== 'OK' || !data.result) {
-      console.error('[GoogleReviews] API status:', data.status)
-      return null
+    // Normaliser vers l'ancienne interface pour ne pas changer le rendu
+    return {
+      rating: data.rating,
+      user_ratings_total: data.userRatingCount,
+      reviews: (data.reviews ?? []).map((r) => ({
+        author_name: r.authorAttribution.displayName,
+        profile_photo_url: r.authorAttribution.photoUri ?? '',
+        rating: r.rating,
+        text: r.text?.text ?? '',
+        relative_time_description: r.relativePublishTimeDescription,
+      })),
     }
-
-    return data.result
   } catch (err) {
     console.error('[GoogleReviews] Fetch error:', err)
     return null

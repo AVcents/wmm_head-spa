@@ -433,6 +433,12 @@ export default function AdminPrestationsPage() {
 // SERVICE FORM COMPONENT
 // ============================================
 
+interface ExtraOption {
+  id: string
+  name: string
+  price: number
+}
+
 function ServiceForm({
   initialData,
   onSave,
@@ -461,6 +467,35 @@ function ServiceForm({
   )
 
   const [saving, setSaving] = useState(false)
+  const [allExtras, setAllExtras] = useState<ExtraOption[]>([])
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([])
+  const [extrasLoading, setExtrasLoading] = useState(false)
+
+  // Fetch all extras + current assignments
+  useEffect(() => {
+    setExtrasLoading(true)
+    const requests: Promise<void>[] = [
+      fetch('/api/extras')
+        .then((r) => r.json())
+        .then((data: ExtraOption[]) => setAllExtras(data))
+        .catch(() => {}),
+    ]
+    if (initialData?.id) {
+      requests.push(
+        fetch(`/api/admin/service-extras?serviceId=${encodeURIComponent(initialData.id)}`)
+          .then((r) => r.json())
+          .then((data: { extraIds: string[] }) => setSelectedExtraIds(data.extraIds ?? []))
+          .catch(() => {})
+      )
+    }
+    Promise.all(requests).finally(() => setExtrasLoading(false))
+  }, [initialData?.id])
+
+  const toggleExtra = (id: string) => {
+    setSelectedExtraIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -479,7 +514,20 @@ function ServiceForm({
         : form.id,
     }
 
+    // Save service first
     await onSave(data)
+
+    // Save extras assignment
+    try {
+      await fetch('/api/admin/service-extras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: data.id, extraIds: selectedExtraIds }),
+      })
+    } catch {
+      // Non-bloquant
+    }
+
     setSaving(false)
   }
 
@@ -698,6 +746,43 @@ function ServiceForm({
           </div>
         </div>
       )}
+
+      {/* Extras assignment */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">Options extras assignées</h4>
+            <p className="text-xs text-foreground-muted mt-0.5">
+              Ces extras seront proposés au client lors de la réservation de cette prestation
+            </p>
+          </div>
+          {extrasLoading && <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />}
+        </div>
+
+        {allExtras.length === 0 && !extrasLoading ? (
+          <p className="text-sm text-foreground-muted italic">
+            Aucun extra disponible — créez-en depuis la page Extras.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {allExtras.map((extra) => (
+              <label
+                key={extra.id}
+                className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background cursor-pointer hover:border-primary-300 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedExtraIds.includes(extra.id)}
+                  onChange={() => toggleExtra(extra.id)}
+                  className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
+                />
+                <span className="flex-1 text-sm font-medium text-foreground">{extra.name}</span>
+                <span className="text-sm font-bold text-primary-600">+{Number(extra.price).toFixed(2)}€</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Active toggle */}
       <div className="mb-6">

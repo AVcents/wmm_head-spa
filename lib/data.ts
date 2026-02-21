@@ -15,6 +15,9 @@ import type {
   ScheduleTemplateRow,
   ScheduleHourRow,
   ScheduleTemplateWithHours,
+  ExtraRow,
+  PlanningOverrideRow,
+  ServiceExtraRow,
 } from '@/lib/supabase/types'
 import type { Service } from '@/lib/services-data'
 
@@ -78,6 +81,18 @@ export async function getActiveSchedule(): Promise<{
     template: { id: t.id, label: t.label, sort_order: t.sort_order },
     hours: t.schedule_hours.sort((a, b) => a.sort_order - b.sort_order),
   }
+}
+
+/** Fetch active extras (public) */
+export async function getExtras(): Promise<ExtraRow[]> {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('extras')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order')
+  if (error) { console.error('Error fetching extras:', error); return [] }
+  return (data ?? []) as ExtraRow[]
 }
 
 // ============================================
@@ -169,6 +184,46 @@ export async function upsertVariants(
   return true
 }
 
+/** Fetch all extras (including inactive) for admin */
+export async function getExtrasAdmin(): Promise<ExtraRow[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('extras')
+    .select('*')
+    .order('sort_order')
+  if (error) { console.error('Error fetching extras admin:', error); return [] }
+  return (data ?? []) as ExtraRow[]
+}
+
+/** Create an extra */
+export async function createExtra(
+  extra: Omit<ExtraRow, 'id' | 'created_at' | 'updated_at'>
+): Promise<ExtraRow | null> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.from('extras').insert(extra).select().single()
+  if (error) { console.error('Error creating extra:', error); return null }
+  return data as ExtraRow
+}
+
+/** Update an extra */
+export async function updateExtra(
+  id: string,
+  updates: Partial<Omit<ExtraRow, 'id' | 'created_at' | 'updated_at'>>
+): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('extras').update(updates).eq('id', id)
+  if (error) { console.error('Error updating extra:', error); return false }
+  return true
+}
+
+/** Delete an extra */
+export async function deleteExtra(id: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('extras').delete().eq('id', id)
+  if (error) { console.error('Error deleting extra:', error); return false }
+  return true
+}
+
 /** Get all schedule templates with hours */
 export async function getAllScheduleTemplates(): Promise<ScheduleTemplateWithHours[]> {
   const supabase = createAdminClient()
@@ -223,84 +278,402 @@ export async function setActiveTemplate(templateId: string): Promise<boolean> {
 // SCHEDULE PARSING FOR HAPIO
 // ============================================
 
+// Mapping jours français → numéro (0=dim, 1=lun, ..., 6=sam)
+const DAY_MAPPING: Record<string, number> = {
+  'Dimanche': 0,
+  'Lundi': 1,
+  'Mardi': 2,
+  'Mercredi': 3,
+  'Jeudi': 4,
+  'Vendredi': 5,
+  'Samedi': 6,
+}
+
+/**
+ * Parse des lignes d'horaires (format "09h-12h / 13h-19h" ou "Fermé")
+ * en blocs Hapio {day_of_week, start_time, end_time}.
+ * Supports jours uniques ("Lundi") et plages ("Lundi - Vendredi").
+ */
+export function parseHoursToHapioBlocks(
+  hours: Array<{ day_label: string; hours: string; sort_order?: number }>
+): Array<{ day_of_week: number; start_time: string; end_time: string }> {
+  const blocks: Array<{ day_of_week: number; start_time: string; end_time: string }> = []
+
+  for (const hour of hours) {
+    // Insensible aux variations d'encodage : "Fermé", "FermÃ©", etc.
+    if (!hour.hours || /^ferm/i.test(hour.hours.trim())) continue
+
+    const daysToProcess: number[] = []
+
+    if (hour.day_label.includes(' - ')) {
+      const parts = hour.day_label.split(' - ').map(d => d.trim())
+      const startDay = parts[0]
+      const endDay = parts[1]
+      if (startDay && endDay) {
+        const startNum = DAY_MAPPING[startDay]
+        const endNum = DAY_MAPPING[endDay]
+        if (startNum !== undefined && endNum !== undefined) {
+          for (let i = startNum; i <= endNum; i++) daysToProcess.push(i)
+        }
+      }
+    } else {
+      const dayNum = DAY_MAPPING[hour.day_label]
+      if (dayNum !== undefined) daysToProcess.push(dayNum)
+    }
+
+    // Parse "09h-12h / 13h-19h" → plusieurs segments
+    const segments = hour.hours.split('/')
+    for (const segment of segments) {
+      const match = segment.trim().match(/(\d{1,2})h(\d{2})?[\s-]+(\d{1,2})h(\d{2})?/)
+      if (!match) continue
+      const startH = match[1]!.padStart(2, '0')
+      const startM = (match[2] ?? '00').padStart(2, '0')
+      const endH = match[3]!.padStart(2, '0')
+      const endM = (match[4] ?? '00').padStart(2, '0')
+      for (const dayNum of daysToProcess) {
+        blocks.push({ day_of_week: dayNum, start_time: `${startH}:${startM}`, end_time: `${endH}:${endM}` })
+      }
+    }
+  }
+
+  return blocks
+}
+
 /**
  * Parse les horaires du template actif pour Hapio
- * Format attendu : "09h-12h / 13h-19h" ou "Fermé"
- * Retourne un tableau de { day_of_week, start_time, end_time }
+ * @deprecated Utiliser parseHoursToHapioBlocks + getAllScheduleTemplates directement
  */
 export async function getActiveScheduleForHapio(): Promise<
   Array<{ day_of_week: number; start_time: string; end_time: string }>
 > {
   const schedule = await getActiveSchedule()
   if (!schedule) return []
+  return parseHoursToHapioBlocks(schedule.hours)
+}
 
-  const blocks: Array<{ day_of_week: number; start_time: string; end_time: string }> = []
+// ============================================
+// PLANNING OVERRIDES (admin — calendrier)
+// ============================================
 
-  // Mapping jours français → numéro (0=dim, 1=lun, ..., 6=sam)
-  const dayMapping: Record<string, number> = {
-    'Dimanche': 0,
-    'Lundi': 1,
-    'Mardi': 2,
-    'Mercredi': 3,
-    'Jeudi': 4,
-    'Vendredi': 5,
-    'Samedi': 6,
+/** Récupère tous les overrides à partir d'aujourd'hui (+ passés récents) */
+export async function getPlanningOverrides(
+  from?: string  // YYYY-MM-DD, défaut = lundi de la semaine courante - 1 semaine
+): Promise<PlanningOverrideRow[]> {
+  const supabase = createAdminClient()
+  const startFrom = from ?? getMondayOf(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+  const { data, error } = await supabase
+    .from('planning_overrides')
+    .select('*')
+    .gte('week_start', startFrom)
+    .order('week_start')
+
+  if (error) { console.error('Error fetching planning overrides:', error); return [] }
+  return (data ?? []) as PlanningOverrideRow[]
+}
+
+/** Crée ou met à jour un override pour une semaine donnée */
+export async function upsertPlanningOverride(
+  override: Omit<PlanningOverrideRow, 'id' | 'created_at' | 'updated_at'>
+): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('planning_overrides')
+    .upsert({ ...override, updated_at: new Date().toISOString() }, { onConflict: 'week_start' })
+  if (error) { console.error('Error upserting planning override:', error); return false }
+  return true
+}
+
+/** Supprime un override (la semaine reviendra au template actif) */
+export async function deletePlanningOverride(weekStart: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('planning_overrides')
+    .delete()
+    .eq('week_start', weekStart)
+  if (error) { console.error('Error deleting planning override:', error); return false }
+  return true
+}
+
+// ============================================
+// HELPERS CALENDRIER
+// ============================================
+
+/** Helper : formater une Date en YYYY-MM-DD UTC */
+function utcYMD(d: Date): string {
+  return d.toISOString().split('T')[0]!
+}
+
+/** Retourne le lundi d'une semaine donnée (YYYY-MM-DD) — méthodes UTC pour éviter les décalages timezone */
+export function getMondayOf(date: Date | number): string {
+  const d = new Date(date)
+  const day = d.getUTCDay() // 0=dim en UTC
+  const diff = day === 0 ? -6 : 1 - day
+  d.setUTCDate(d.getUTCDate() + diff)
+  return utcYMD(d)
+}
+
+/** Retourne le dimanche d'une semaine donnée à partir du lundi (YYYY-MM-DD) */
+export function getSundayOf(mondayStr: string): string {
+  const d = new Date(mondayStr + 'T00:00:00Z') // forcer UTC
+  d.setUTCDate(d.getUTCDate() + 6)
+  return utcYMD(d)
+}
+
+/** Génère la liste des lundis pour les N prochaines semaines */
+export function getNextWeekMondays(weeksAhead: number, fromDate?: Date): string[] {
+  const mondays: string[] = []
+  const startMonday = getMondayOf(fromDate ?? new Date())
+  const d = new Date(startMonday + 'T00:00:00Z') // forcer UTC
+  for (let i = 0; i < weeksAhead; i++) {
+    mondays.push(utcYMD(d))
+    d.setUTCDate(d.getUTCDate() + 7)
+  }
+  return mondays
+}
+
+// ============================================
+// SCHEDULE TEMPLATE CRUD (admin)
+// ============================================
+
+/** Remplace les heures d'un template (supprime tout et réinsère) */
+export async function updateScheduleHours(
+  templateId: string,
+  hours: Array<{ day_label: string; hours: string; sort_order: number }>
+): Promise<boolean> {
+  const supabase = createAdminClient()
+
+  // Supprimer toutes les lignes existantes pour ce template
+  const { error: deleteError } = await supabase
+    .from('schedule_hours')
+    .delete()
+    .eq('template_id', templateId)
+
+  if (deleteError) {
+    console.error('Error deleting schedule hours:', deleteError)
+    return false
   }
 
-  for (const hour of schedule.hours) {
-    if (hour.hours === 'Fermé' || !hour.hours) continue
+  if (hours.length === 0) return true
 
-    // Handle day ranges like "Lundi - Vendredi" or single days like "Lundi"
-    const daysToProcess: number[] = []
+  // Insérer les nouvelles lignes
+  const rows = hours.map((h) => ({ ...h, template_id: templateId }))
+  const { error: insertError } = await supabase.from('schedule_hours').insert(rows)
 
-    if (hour.day_label.includes(' - ')) {
-      // It's a range like "Lundi - Vendredi"
-      const parts = hour.day_label.split(' - ').map(d => d.trim())
-      const startDay = parts[0]
-      const endDay = parts[1]
-
-      if (startDay && endDay) {
-        const startNum = dayMapping[startDay]
-        const endNum = dayMapping[endDay]
-
-        if (startNum !== undefined && endNum !== undefined) {
-          // Add all days in range (inclusive)
-          for (let i = startNum; i <= endNum; i++) {
-            daysToProcess.push(i)
-          }
-        }
-      }
-    } else {
-      // Single day like "Lundi"
-      const dayNum = dayMapping[hour.day_label]
-      if (dayNum !== undefined) {
-        daysToProcess.push(dayNum)
-      }
-    }
-
-    // Parse "09h-12h / 13h-19h" → plusieurs blocks
-    const segments = hour.hours.split('/')
-    for (const segment of segments) {
-      const match = segment.trim().match(/(\d{1,2})h(\d{2})?[\s-]+(\d{1,2})h(\d{2})?/)
-      if (!match) continue
-
-      const startH = match[1]!.padStart(2, '0')
-      const startM = (match[2] ?? '00').padStart(2, '0')
-      const endH = match[3]!.padStart(2, '0')
-      const endM = (match[4] ?? '00').padStart(2, '0')
-
-      // Create a block for each day in the range
-      for (const dayNum of daysToProcess) {
-        blocks.push({
-          day_of_week: dayNum,
-          start_time: `${startH}:${startM}`,
-          end_time: `${endH}:${endM}`,
-        })
-      }
-    }
+  if (insertError) {
+    console.error('Error inserting schedule hours:', insertError)
+    return false
   }
 
-  return blocks
+  return true
+}
+
+/** Renomme un template */
+export async function updateScheduleTemplateMeta(
+  id: string,
+  label: string
+): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('schedule_templates')
+    .update({ label })
+    .eq('id', id)
+  if (error) { console.error('Error updating template meta:', error); return false }
+  return true
+}
+
+/** Crée un nouveau template avec ses heures */
+export async function createScheduleTemplate(
+  id: string,
+  label: string,
+  sortOrder: number,
+  hours: Array<{ day_label: string; hours: string; sort_order: number }>
+): Promise<boolean> {
+  const supabase = createAdminClient()
+
+  // Insérer le template
+  const { error: tplError } = await supabase
+    .from('schedule_templates')
+    .insert({ id, label, sort_order: sortOrder })
+
+  if (tplError) {
+    console.error('Error creating schedule template:', tplError)
+    return false
+  }
+
+  if (hours.length === 0) return true
+
+  // Insérer les heures
+  const rows = hours.map((h) => ({ ...h, template_id: id }))
+  const { error: hoursError } = await supabase.from('schedule_hours').insert(rows)
+
+  if (hoursError) {
+    console.error('Error inserting hours for new template:', hoursError)
+    return false
+  }
+
+  return true
+}
+
+/** Supprime un template et ses heures */
+export async function deleteScheduleTemplate(id: string): Promise<boolean> {
+  const supabase = createAdminClient()
+
+  // Supprimer les heures d'abord
+  await supabase.from('schedule_hours').delete().eq('template_id', id)
+
+  // Supprimer le template
+  const { error } = await supabase.from('schedule_templates').delete().eq('id', id)
+  if (error) { console.error('Error deleting schedule template:', error); return false }
+  return true
+}
+
+// ============================================
+// SERVICE EXTRAS (prestation ↔ extras)
+// ============================================
+
+/** Retourne les IDs des extras liés à une prestation (public) */
+export async function getExtraIdsForService(serviceId: string): Promise<string[]> {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('service_extras')
+    .select('extra_id')
+    .eq('service_id', serviceId)
+    .order('sort_order')
+  if (error) { console.error('Error fetching service extras:', error); return [] }
+  return (data ?? []).map((r: { extra_id: string }) => r.extra_id)
+}
+
+/** Retourne les extras actifs liés à une prestation (public) */
+export async function getExtrasForService(serviceId: string): Promise<ExtraRow[]> {
+  const supabase = createPublicClient()
+  // Join via sous-requête : récupère extras dont l'id est dans service_extras pour ce service
+  const extraIds = await getExtraIdsForService(serviceId)
+  if (extraIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('extras')
+    .select('*')
+    .in('id', extraIds)
+    .eq('is_active', true)
+  if (error) { console.error('Error fetching extras for service:', error); return [] }
+  // Respecter l'ordre défini dans service_extras
+  return (data ?? []).sort(
+    (a: ExtraRow, b: ExtraRow) => extraIds.indexOf(a.id) - extraIds.indexOf(b.id)
+  ) as ExtraRow[]
+}
+
+/** Admin : récupère les liaisons extras pour une prestation */
+export async function getServiceExtrasAdmin(serviceId: string): Promise<ServiceExtraRow[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('service_extras')
+    .select('*')
+    .eq('service_id', serviceId)
+    .order('sort_order')
+  if (error) { console.error('Error fetching service extras admin:', error); return [] }
+  return (data ?? []) as ServiceExtraRow[]
+}
+
+/** Admin : définit les extras d'une prestation (remplace tout) */
+export async function setServiceExtras(
+  serviceId: string,
+  extraIds: string[]
+): Promise<boolean> {
+  const supabase = createAdminClient()
+  // Supprimer les liaisons existantes
+  const { error: delError } = await supabase
+    .from('service_extras')
+    .delete()
+    .eq('service_id', serviceId)
+  if (delError) { console.error('Error deleting service extras:', delError); return false }
+  if (extraIds.length === 0) return true
+  // Insérer les nouvelles liaisons
+  const rows = extraIds.map((extra_id, i) => ({ service_id: serviceId, extra_id, sort_order: i }))
+  const { error: insError } = await supabase.from('service_extras').insert(rows)
+  if (insError) { console.error('Error inserting service extras:', insError); return false }
+  return true
+}
+
+// ============================================
+// SLOTS CACHE (économie API Hapio)
+// TTL : 30 min — invalider à chaque booking créé/annulé
+// ============================================
+
+const CACHE_TTL_MINUTES = 30
+
+export interface CachedSlot {
+  starts_at: string
+  ends_at: string
+  resources?: { id: string; name: string }[]
+}
+
+/** Lit le cache des créneaux pour un service + une date */
+export async function getCachedSlots(
+  serviceId: string,
+  date: string
+): Promise<CachedSlot[] | null> {
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from('slots_cache')
+      .select('slots, cached_at')
+      .eq('service_id', serviceId)
+      .eq('date', date)
+      .single()
+    if (error || !data) return null
+    // Vérifier TTL
+    const age = Date.now() - new Date((data as { cached_at: string }).cached_at).getTime()
+    if (age > CACHE_TTL_MINUTES * 60 * 1000) return null // expiré
+    return (data as { slots: CachedSlot[] }).slots
+  } catch {
+    return null
+  }
+}
+
+/** Stocke les créneaux en cache pour un service + une date */
+export async function setCachedSlots(
+  serviceId: string,
+  date: string,
+  slots: CachedSlot[]
+): Promise<void> {
+  try {
+    const supabase = createAdminClient()
+    await supabase
+      .from('slots_cache')
+      .upsert(
+        { service_id: serviceId, date, slots: slots as unknown[], cached_at: new Date().toISOString() },
+        { onConflict: 'service_id,date' }
+      )
+  } catch (e) {
+    console.error('Error setting slots cache:', e)
+  }
+}
+
+/** Invalide le cache pour un service + une date (appelé après booking créé/annulé) */
+export async function invalidateSlotsCache(
+  serviceId: string,
+  date: string
+): Promise<void> {
+  try {
+    const supabase = createAdminClient()
+    await supabase
+      .from('slots_cache')
+      .delete()
+      .eq('service_id', serviceId)
+      .eq('date', date)
+  } catch (e) {
+    console.error('Error invalidating slots cache:', e)
+  }
+}
+
+/** Invalide tout le cache (après modification du planning) */
+export async function invalidateAllSlotsCache(): Promise<void> {
+  try {
+    const supabase = createAdminClient()
+    await supabase.from('slots_cache').delete().gte('id', '00000000-0000-0000-0000-000000000000')
+  } catch (e) {
+    console.error('Error invalidating all slots cache:', e)
+  }
 }
 
 // ============================================

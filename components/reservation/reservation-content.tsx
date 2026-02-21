@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Calendar, Clock, CreditCard, Sparkles, User, Check } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, CreditCard, Sparkles, User, Check, Gift } from 'lucide-react'
 import { Header } from '@/components/shared/header'
 import { Footer } from '@/components/shared/footer'
 import type { Service } from '@/lib/services-data'
@@ -10,6 +10,8 @@ import { ServiceStep } from './steps/service-step'
 import { DateStep } from './steps/date-step'
 import { SlotStep } from './steps/slot-step'
 import { InfoStep } from './steps/info-step'
+import { ExtrasStep } from './steps/extras-step'
+import type { Extra } from './steps/extras-step'
 import { PaymentStep } from './steps/payment-step'
 import { ConfirmationStep } from './steps/confirmation-step'
 
@@ -33,6 +35,8 @@ export interface BookingState {
     phone: string
     message?: string
   } | null
+  // Extras sélectionnés
+  selectedExtras: Extra[]
   bookingId: string | null
   // Paiement
   paymentMode: PaymentMode | null
@@ -42,6 +46,7 @@ export interface BookingState {
 
 const STEPS = [
   { id: 'service', label: 'Prestation', icon: Sparkles },
+  { id: 'extras', label: 'Options', icon: Gift },
   { id: 'date', label: 'Date', icon: Calendar },
   { id: 'slot', label: 'Créneau', icon: Clock },
   { id: 'info', label: 'Coordonnées', icon: User },
@@ -66,7 +71,7 @@ export default function ReservationContent({
     ? services.find((s) => s.id === preselectedServiceId) ?? null
     : null
   const initialVariant = preselectedVariantId ?? null
-  const initialStep: StepId = initialService ? 'date' : 'service'
+  const initialStep: StepId = initialService ? 'extras' : 'service'
 
   const [currentStep, setCurrentStep] = useState<StepId>(initialStep)
   const [booking, setBooking] = useState<BookingState>({
@@ -77,6 +82,7 @@ export default function ReservationContent({
     hapioServiceId: null,
     hapioLocationId: null,
     clientInfo: null,
+    selectedExtras: [],
     bookingId: null,
     paymentMode: null,
     paymentIntentId: null,
@@ -119,7 +125,7 @@ export default function ReservationContent({
           {/* Stepper */}
           {currentStep !== 'confirmation' && (
             <div className="mb-10">
-              <div className="flex items-center justify-between max-w-lg mx-auto">
+              <div className="flex items-center justify-between max-w-xl mx-auto">
                 {STEPS.map((step, i) => {
                   const isActive = step.id === currentStep
                   const isDone = i < stepIndex
@@ -130,7 +136,7 @@ export default function ReservationContent({
                       <div className="flex flex-col items-center">
                         <div
                           className={`
-                            flex items-center justify-center h-11 w-11 rounded-full
+                            flex items-center justify-center h-10 w-10 rounded-full
                             transition-all duration-300
                             ${isDone
                               ? 'bg-primary-600 text-white'
@@ -141,13 +147,13 @@ export default function ReservationContent({
                           `}
                         >
                           {isDone ? (
-                            <Check className="h-5 w-5" />
+                            <Check className="h-4 w-4" />
                           ) : (
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-4 w-4" />
                           )}
                         </div>
                         <span
-                          className={`mt-2 text-xs font-medium ${
+                          className={`mt-2 text-xs font-medium hidden sm:block ${
                             isActive || isDone
                               ? 'text-primary-600 dark:text-primary-400'
                               : 'text-foreground-muted'
@@ -158,7 +164,7 @@ export default function ReservationContent({
                       </div>
                       {i < STEPS.length - 1 && (
                         <div
-                          className={`h-0.5 w-8 sm:w-14 mx-2 mt-[-20px] rounded-full transition-colors duration-300 ${
+                          className={`h-0.5 w-5 sm:w-10 mx-1 mt-[-20px] rounded-full transition-colors duration-300 ${
                             i < stepIndex
                               ? 'bg-primary-600'
                               : 'bg-border'
@@ -172,8 +178,8 @@ export default function ReservationContent({
             </div>
           )}
 
-          {/* Bouton retour (masqué sur payment car géré dans le composant) */}
-          {currentStep !== 'service' && currentStep !== 'confirmation' && currentStep !== 'payment' && (
+          {/* Bouton retour (masqué sur service, confirmation, payment et extras car géré dans ces composants) */}
+          {currentStep !== 'service' && currentStep !== 'confirmation' && currentStep !== 'payment' && currentStep !== 'extras' && (
             <button
               onClick={goBack}
               className="flex items-center gap-2 text-sm text-foreground-secondary hover:text-foreground mb-6 transition-colors"
@@ -199,8 +205,20 @@ export default function ReservationContent({
                   selectedVariantId={booking.variantId}
                   onSelect={(service, variantId) => {
                     updateBooking({ service, variantId })
+                    goTo('extras')
+                  }}
+                />
+              )}
+
+              {currentStep === 'extras' && (
+                <ExtrasStep
+                  selectedExtras={booking.selectedExtras}
+                  serviceId={booking.service?.id ?? undefined}
+                  onNext={(extras) => {
+                    updateBooking({ selectedExtras: extras })
                     goTo('date')
                   }}
+                  onBack={() => goTo('service')}
                 />
               )}
 

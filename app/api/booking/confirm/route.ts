@@ -21,6 +21,8 @@ interface ConfirmBody {
   serviceName: string
   variantName?: string
   price: number
+  extras?: Array<{ name: string; price: number }>
+  extrasTotal?: number
   paymentMode: 'hold' | 'direct' | 'gift_card'
 }
 
@@ -42,6 +44,15 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'Champs obligatoires manquants' },
+        { status: 400 }
+      )
+    }
+
+    // Vérification délai 24h minimum (protection anti-bypass)
+    const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    if (new Date(body.startsAt) < cutoff) {
+      return NextResponse.json(
+        { error: 'Les réservations doivent être effectuées au moins 24h à l\'avance' },
         { status: 400 }
       )
     }
@@ -143,6 +154,10 @@ export async function POST(req: NextRequest) {
         payment_mode: body.paymentMode,
         payment_intent_id: body.paymentIntentId ?? '',
         gift_card_code: body.giftCardCode ?? '',
+        extras_json: body.extras && body.extras.length > 0
+          ? JSON.stringify(body.extras)
+          : '',
+        extras_total: String(body.extrasTotal ?? 0),
       },
     }
     if (body.resourceId) {
@@ -183,6 +198,7 @@ export async function POST(req: NextRequest) {
     if (body.variantName) emailData.variantLabel = body.variantName
     if (body.message) emailData.message = body.message
     if (body.giftCardCode) emailData.giftCardCode = body.giftCardCode
+    if (body.extras && body.extras.length > 0) emailData.extras = body.extras
 
     sendBookingEmails(emailData).catch((err) => {
       console.error('[confirm] Erreur envoi email réservation:', err)

@@ -160,6 +160,7 @@ function StripeCheckoutForm({
 // -----------------------------------------------
 export function PaymentStep({ booking, onConfirm, onBack }: Props) {
   const [selectedMode, setSelectedMode] = useState<PaymentMode | null>(null)
+  const [cgvAccepted, setCgvAccepted] = useState(false)
   const [giftCardCode, setGiftCardCode] = useState('')
   const [giftCardStatus, setGiftCardStatus] = useState<
     'idle' | 'loading' | 'valid_full' | 'valid_partial' | 'error'
@@ -177,6 +178,11 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
     : null
 
   const price = variant?.price ?? booking.service?.price ?? 0
+  const extrasTotal = (booking.selectedExtras ?? []).reduce(
+    (sum, e) => sum + Number(e.price),
+    0
+  )
+  const totalPrice = price + extrasTotal
 
   // Créer un intent Stripe (pour hold ou direct)
   const createStripeIntent = useCallback(
@@ -192,7 +198,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             paymentMethod: mode,
-            amount: price,
+            amount: totalPrice,
             serviceId: booking.service?.id ?? '',
             clientName: booking.clientInfo?.name ?? '',
             clientEmail: booking.clientInfo?.email ?? '',
@@ -221,7 +227,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         setLoadingIntent(false)
       }
     },
-    [booking, price]
+    [booking, totalPrice]
   )
 
   // Sélection du mode de paiement
@@ -255,7 +261,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentMethod: 'gift_card',
-          amount: price,
+          amount: totalPrice,
           giftCardCode: giftCardCode.trim(),
           serviceId: booking.service?.id ?? '',
           clientName: booking.clientInfo?.name ?? '',
@@ -323,7 +329,12 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           message: booking.clientInfo?.message,
           serviceName: booking.service?.name,
           variantName: variant?.hairLengthLabel,
-          price,
+          price: totalPrice,
+          extras: (booking.selectedExtras ?? []).map((e) => ({
+            name: e.name,
+            price: e.price,
+          })),
+          extrasTotal,
           paymentMode: mode,
         }),
       })
@@ -348,7 +359,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         ? 0
         : selectedMode === 'gift_card'
           ? (remainingAmount ?? 0)
-          : price
+          : totalPrice
     void confirmBooking(selectedMode!, piId, amountPaid)
   }
 
@@ -398,13 +409,62 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           <div className="h-px bg-primary-200 dark:bg-primary-800/30 my-2" />
           <div className="flex items-center justify-between">
             <span className="text-foreground-secondary flex items-center gap-1.5">
-              <Euro className="h-4 w-4" /> Montant
+              <Euro className="h-4 w-4" /> Prestation
             </span>
+            <span className="font-medium text-foreground">{price}€</span>
+          </div>
+          {(booking.selectedExtras ?? []).length > 0 && (
+            <>
+              {(booking.selectedExtras ?? []).map((e) => (
+                <div key={e.id} className="flex items-center justify-between">
+                  <span className="text-foreground-secondary text-sm">+ {e.name}</span>
+                  <span className="font-medium text-foreground text-sm">+{Number(e.price).toFixed(2)}€</span>
+                </div>
+              ))}
+              <div className="h-px bg-primary-200 dark:bg-primary-800/30 my-1" />
+            </>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-foreground">Total</span>
             <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
-              {price}€
+              {totalPrice}€
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Acceptation des CGV */}
+      <div className={`flex items-start gap-3 mb-8 p-4 rounded-xl border-2 transition-colors cursor-pointer ${
+        cgvAccepted
+          ? 'border-primary-400 bg-primary-50/40 dark:bg-primary-900/10'
+          : 'border-border bg-surface'
+      }`}
+        onClick={() => setCgvAccepted((v) => !v)}
+      >
+        <div className={`mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+          cgvAccepted
+            ? 'border-primary-600 bg-primary-600'
+            : 'border-foreground-muted bg-transparent'
+        }`}>
+          {cgvAccepted && (
+            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+        <p className="text-sm text-foreground-secondary leading-relaxed select-none">
+          J&apos;ai lu et j&apos;accepte les{' '}
+          <a
+            href="/cgv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 hover:text-primary-700 underline font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            conditions générales de vente
+          </a>{' '}
+          de Kalm Headspa. Je reconnais avoir pris connaissance des modalités de la prestation et de la politique d&apos;annulation.
+        </p>
       </div>
 
       {/* Sélection du mode de paiement */}
@@ -453,8 +513,8 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                       <p className="font-medium mb-1">Politique d&apos;annulation</p>
                       <ul className="space-y-1 text-xs">
                         <li>Annulation à plus de 24h : aucun frais</li>
-                        <li>Annulation à moins de 24h : 30% du montant ({Math.round(price * 0.30)}€)</li>
-                        <li>Absence sans prévenir : 80% du montant ({Math.round(price * 0.80)}€)</li>
+                        <li>Annulation à moins de 24h : 30% du montant ({Math.round(totalPrice * 0.30)}€)</li>
+                        <li>Absence sans prévenir : 80% du montant ({Math.round(totalPrice * 0.80)}€)</li>
                       </ul>
                       <p className="mt-2 text-xs italic">
                         En confirmant, vous acceptez cette politique d&apos;annulation et autorisez
@@ -494,7 +554,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary-600" />
                 <span className="font-medium text-foreground">
-                  Paiement immédiat par carte — {price}€
+                  Paiement immédiat par carte — {totalPrice}€
                 </span>
               </div>
               <p className="text-sm text-foreground-secondary mt-1">
@@ -636,10 +696,10 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                 <StripeCheckoutForm
                   amount={
                     selectedMode === 'hold'
-                      ? Math.round(price * 0.80)
+                      ? Math.round(totalPrice * 0.80)
                       : selectedMode === 'gift_card'
                         ? (remainingAmount ?? 0)
-                        : price
+                        : totalPrice
                   }
                   buttonLabel={
                     selectedMode === 'hold'
@@ -647,7 +707,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                       : 'Payer'
                   }
                   onSuccess={handleStripeSuccess}
-                  disabled={confirmingBooking}
+                  disabled={!cgvAccepted || confirmingBooking}
                 />
               </Elements>
             )}
@@ -659,7 +719,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         <button
           type="button"
           onClick={handleGiftCardFullConfirm}
-          disabled={confirmingBooking}
+          disabled={!cgvAccepted || confirmingBooking}
           className="w-full py-4 rounded-xl bg-primary-600 text-white font-semibold text-lg hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
           {confirmingBooking ? (
@@ -716,7 +776,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         className="mt-4 flex items-center gap-2 text-sm text-foreground-secondary hover:text-foreground transition-colors mx-auto"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour aux coordonnées
+        Retour aux options
       </button>
     </div>
   )

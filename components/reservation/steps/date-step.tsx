@@ -86,9 +86,9 @@ export function DateStep({ selectedDate, onSelect }: Props) {
   }, [viewMonth, viewYear])
 
   const isDisabled = (date: Date): boolean => {
-    // Pas dans le passé
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    if (date < todayStart) return true
+    // Minimum 2 jours à l'avance (pas aujourd'hui ni demain)
+    const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2)
+    if (date < minDate) return true
     // Pas le dimanche (0 = dimanche)
     if (date.getDay() === 0) return true
     // Pas au-delà de 3 mois

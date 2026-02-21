@@ -8,6 +8,7 @@ import {
   cancelBooking,
 } from '@/lib/hapio'
 import { sendBookingEmails } from '@/lib/email'
+import { getCachedSlots, setCachedSlots, invalidateSlotsCache } from '@/lib/data'
 
 // GET /api/booking?action=locations|services|slots|resources
 export async function GET(req: NextRequest) {
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
         const from = searchParams.get('from')
         const to = searchParams.get('to')
         const resourceId = searchParams.get('resourceId') ?? undefined
+        const noCache = searchParams.get('noCache') === 'true'
 
         if (!serviceId || !locationId || !from || !to) {
           return NextResponse.json(
@@ -47,6 +49,18 @@ export async function GET(req: NextRequest) {
           )
         }
 
+        // ── Cache (si from === to = une seule date, on cache par date) ──────────
+        const isSingleDay = from === to
+        if (isSingleDay && !noCache) {
+          const cached = await getCachedSlots(serviceId, from)
+          if (cached !== null) {
+            // Filtrer 48h depuis le cache
+            const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000)
+            return NextResponse.json(cached.filter((s) => new Date(s.starts_at) > cutoff))
+          }
+        }
+
+        // ── Appel Hapio ─────────────────────────────────────────────────────────
         const slots = await getBookableSlots({
           serviceId,
           locationId,
@@ -54,7 +68,18 @@ export async function GET(req: NextRequest) {
           to,
           ...(resourceId !== undefined ? { resourceId } : {}),
         })
-        return NextResponse.json(slots)
+
+        // Stocker en cache si requête journée unique
+        if (isSingleDay && !noCache) {
+          await setCachedSlots(serviceId, from, slots)
+        }
+
+        // Filtrer les créneaux dans les prochaines 48h (minimum 2 jours d'avance)
+        const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000)
+        const filteredSlots = slots.filter(
+          (s: { starts_at: string }) => new Date(s.starts_at) > cutoff
+        )
+        return NextResponse.json(filteredSlots)
       }
 
       default:
@@ -93,6 +118,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Vérification délai 48h minimum (2 jours)
+    const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000)
+    if (new Date(startsAt) < cutoff) {
+      return NextResponse.json(
+        { error: 'Les réservations doivent être effectuées au moins 48h à l\'avance' },
+        { status: 400 }
+      )
+    }
+
     const booking = await createBooking({
       serviceId,
       locationId,
@@ -101,6 +135,10 @@ export async function POST(req: NextRequest) {
       endsAt,
       metadata,
     })
+
+    // Invalider le cache pour ce service + cette date
+    const bookingDate = startsAt.slice(0, 10)
+    invalidateSlotsCache(serviceId, bookingDate).catch(() => {})
 
     // Envoi des emails de confirmation (non bloquant)
     if (metadata?.email && metadata?.name) {
@@ -145,6 +183,13 @@ export async function DELETE(req: NextRequest) {
     }
 
     await cancelBooking(bookingId)
+
+    // Invalider le cache si on connait le service et la date
+    const { serviceId: svcId, date: bookingDate } = body
+    if (svcId && bookingDate) {
+      invalidateSlotsCache(String(svcId), String(bookingDate)).catch(() => {})
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Cancel booking error:', error)

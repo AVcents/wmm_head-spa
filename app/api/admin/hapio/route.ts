@@ -494,64 +494,12 @@ export async function POST(req: NextRequest) {
       }
 
       case 'sync-schedule': {
-        // Synchronise les horaires du template actif Supabase → Hapio
-        console.log('[sync-schedule] Starting schedule sync...')
-
-        // 1. Récupérer la location et la ressource Hapio
-        const locations = await getLocations()
-        const location = locations[0]
-        if (!location) {
-          return NextResponse.json({ error: 'Aucune location configurée' }, { status: 400 })
-        }
-
-        const resources = await getResources(location.id)
-        const resource = resources[0]
-        if (!resource) {
-          return NextResponse.json({ error: 'Aucune ressource configurée' }, { status: 400 })
-        }
-
-        // 2. Récupérer les horaires actifs depuis Supabase
-        const scheduleBlocks = await getActiveScheduleForHapio()
-        console.log(`[sync-schedule] Found ${scheduleBlocks.length} schedule blocks from Supabase`)
-
-        // 3. Supprimer tous les schedule blocks existants dans Hapio
-        const existingBlocks = await getAllScheduleBlocks(resource.id)
-        console.log(`[sync-schedule] Deleting ${existingBlocks.length} existing Hapio blocks...`)
-
-        for (const block of existingBlocks) {
-          try {
-            await deleteScheduleBlock(resource.id, block.recurring_schedule_id, block.id)
-            console.log(`[sync-schedule] Deleted block ${block.id}`)
-          } catch (err) {
-            console.warn(`[sync-schedule] Failed to delete block ${block.id}:`, err)
-          }
-        }
-
-        // 4. Créer ou récupérer le recurring schedule
-        const recurringScheduleId = await getOrCreateRecurringSchedule(resource.id, location.id)
-        console.log(`[sync-schedule] Using recurring schedule: ${recurringScheduleId}`)
-
-        // 5. Créer les nouveaux schedule blocks
-        const created: HapioScheduleBlock[] = []
-        for (const block of scheduleBlocks) {
-          try {
-            const newBlock = await createScheduleBlock(resource.id, recurringScheduleId, {
-              weekday: block.day_of_week,
-              start_time: block.start_time,
-              end_time: block.end_time,
-            })
-            created.push(newBlock)
-            console.log(`[sync-schedule] Created block: ${block.day_of_week} ${block.start_time}-${block.end_time}`)
-          } catch (err) {
-            console.error(`[sync-schedule] Failed to create block:`, err)
-          }
-        }
-
+        // Sync optimisée : fusionne les semaines identiques pour économiser les tokens
+        const { syncPlanningToHapio } = await import('@/lib/sync-schedule')
+        const result = await syncPlanningToHapio()
         return NextResponse.json({
           success: true,
-          deleted: existingBlocks.length,
-          created: created.length,
-          blocks: created,
+          ...result,
         })
       }
 

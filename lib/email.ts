@@ -43,6 +43,7 @@ export interface BookingEmailData {
   date: string        // ISO string (starts_at)
   duration: number    // minutes
   price: number
+  extras?: Array<{ name: string; price: number }>
   message?: string
   giftCardCode?: string
   bookingId: string
@@ -157,10 +158,31 @@ function buildClientHtml(d: BookingEmailData): string {
                     <!-- Prix -->
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Tarif</td>
-                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${d.price}&nbsp;€</td>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Prestation</td>
+                        <td style="font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${C.text};text-align:right;">${d.price}&nbsp;€</td>
                       </tr>
                     </table>
+
+                    ${d.extras && d.extras.length > 0 ? d.extras.map(e => `
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
+                      <tr>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">+ ${e.name}</td>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};text-align:right;">+${Number(e.price).toFixed(2)}&nbsp;€</td>
+                      </tr>
+                    </table>`).join('') + `
+                    <div style="height:1px;background-color:${C.border};margin:10px 0;"></div>
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${C.text};">Total</td>
+                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${d.price + (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)}&nbsp;€</td>
+                      </tr>
+                    </table>` : `
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
+                      <tr>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Total</td>
+                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${d.price}&nbsp;€</td>
+                      </tr>
+                    </table>`}
 
                     ${d.giftCardCode ? `
                     <div style="height:1px;background-color:${C.border};margin:14px 0;"></div>
@@ -320,9 +342,19 @@ function buildSalonHtml(d: BookingEmailData): string {
                       <td style="font-size:14px;color:${C.text};padding:3px 0;">${d.duration} min</td>
                     </tr>
                     <tr>
-                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Tarif</td>
-                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;">${d.price} €</td>
+                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Prestation</td>
+                      <td style="font-size:14px;font-weight:600;color:${C.text};padding:3px 0;">${d.price} €</td>
                     </tr>
+                    ${d.extras && d.extras.length > 0 ? d.extras.map(e => `<tr>
+                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">+ ${e.name}</td>
+                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">+${Number(e.price).toFixed(2)} €</td>
+                    </tr>`).join('') + `<tr>
+                      <td style="font-size:13px;font-weight:700;color:${C.text};padding:3px 0;border-top:1px solid ${C.border};">Total</td>
+                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;border-top:1px solid ${C.border};">${d.price + (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)} €</td>
+                    </tr>` : `<tr>
+                      <td style="font-size:13px;font-weight:700;color:${C.text};padding:3px 0;">Total</td>
+                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;">${d.price} €</td>
+                    </tr>`}
                     ${d.giftCardCode ? `<tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Bon cadeau</td>
                       <td style="font-size:13px;color:${C.success};font-weight:600;padding:3px 0;">${d.giftCardCode}</td>

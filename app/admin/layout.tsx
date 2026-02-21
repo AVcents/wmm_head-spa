@@ -7,17 +7,23 @@ import {
   Clock,
   Scissors,
   Calendar,
+  CalendarDays,
   LogOut,
   Menu,
   X,
   ArrowLeft,
+  LayoutGrid,
+  Sparkles,
 } from 'lucide-react'
 import Image from 'next/image'
 
 const navItems = [
-  { href: '/admin/horaires', label: 'Horaires', icon: Clock },
-  { href: '/admin/prestations', label: 'Prestations', icon: Scissors },
+  { href: '/admin/agenda', label: 'Agenda', icon: LayoutGrid },
   { href: '/admin/reservations', label: 'Réservations', icon: Calendar },
+  { href: '/admin/prestations', label: 'Prestations', icon: Scissors },
+  { href: '/admin/extras', label: 'Extras', icon: Sparkles },
+  { href: '/admin/horaires', label: 'Templates horaires', icon: Clock },
+  { href: '/admin/planning', label: 'Horaires hebdo', icon: CalendarDays },
 ]
 
 export default function AdminLayout({

@@ -468,8 +468,8 @@ export default function PlanningPage() {
           type: editMode,
           label: editLabel || null,
         }
-        if (editMode === 'template') body.template_id = editTemplateId
-        if (editMode === 'custom') body.custom_hours = dayConfigsToCustomHours(editDays)
+        if (editMode === 'template') body['template_id'] = editTemplateId
+        if (editMode === 'custom') body['custom_hours'] = dayConfigsToCustomHours(editDays)
 
         const res = await fetch('/api/planning', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },

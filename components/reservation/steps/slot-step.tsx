@@ -80,12 +80,13 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
         const locRes = await fetch('/api/booking?action=locations')
         const locations = await locRes.json()
 
-        if (!locations.length) {
+        const firstLocation = locations[0]
+        if (!firstLocation) {
           setError('Aucun lieu configuré. Contactez le salon.')
           return
         }
 
-        const locationId: string = locations[0].id
+        const locationId: string = firstLocation.id
 
         // 2. Récupérer les services Hapio
         const svcRes = await fetch(`/api/booking?action=services&locationId=${locationId}`)

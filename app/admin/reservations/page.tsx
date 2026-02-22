@@ -116,8 +116,8 @@ export default function AdminReservationsPage() {
 
   const fetchBookings = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+      const today = new Date().toISOString().split('T')[0] ?? ''
+      const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] ?? ''
       const res = await fetch(`/api/admin/hapio?action=bookings&from=${today}&to=${nextMonth}`)
       if (res.ok) {
         const data = await res.json()

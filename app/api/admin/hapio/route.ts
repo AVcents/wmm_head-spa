@@ -86,9 +86,10 @@ export async function GET(req: NextRequest) {
         if (location) {
           services = await getHapioServices(location.id)
           resources = await getResources(location.id)
-          if (resources[0]) {
-            schedules = await getAllScheduleBlocks(resources[0].id)
-            linkedServices = await getResourceServices(resources[0].id)
+          const firstResource = resources[0]
+          if (firstResource) {
+            schedules = await getAllScheduleBlocks(firstResource.id)
+            linkedServices = await getResourceServices(firstResource.id)
           }
         }
 
@@ -424,7 +425,8 @@ export async function POST(req: NextRequest) {
       case 'add-schedule': {
         // Body: { resourceId, locationId, day_of_week, start_time, end_time }
         const { resourceId, locationId, day_of_week, start_time, end_time } = body
-        const resolvedLocationId: string = locationId ?? (await getLocations())[0]?.id
+        const locs = await getLocations()
+        const resolvedLocationId: string = locationId ?? locs[0]?.id ?? ''
         const recurringScheduleId = await getOrCreateRecurringSchedule(resourceId, resolvedLocationId)
         const block = await createScheduleBlock(resourceId, recurringScheduleId, {
           weekday: day_of_week,

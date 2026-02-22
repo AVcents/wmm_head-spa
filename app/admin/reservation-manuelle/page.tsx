@@ -118,8 +118,9 @@ function Step1({
         const supaData: SupabaseService[] = await supaRes.json()
         const locs: { id: string }[] = await locRes.json()
 
-        if (!locs.length) { setError('Aucun lieu configuré dans Hapio.'); setLoading(false); return }
-        const loc = locs[0].id
+        const firstLoc = locs[0]
+        if (!firstLoc) { setError('Aucun lieu configuré dans Hapio.'); setLoading(false); return }
+        const loc = firstLoc.id
         setLocationId(loc)
 
         const svcRes = await fetch(`/api/admin/manual-booking?action=services&locationId=${loc}`)

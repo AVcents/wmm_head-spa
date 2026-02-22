@@ -367,11 +367,14 @@ function Step2({
       )
       if (!res.ok) throw new Error('Erreur lors du chargement des créneaux')
       const data: { starts_at: string; ends_at: string; resources?: { id: string }[] }[] = await res.json()
-      setSlots(data.map((s) => ({
-        startsAt: s.starts_at,
-        endsAt: s.ends_at,
-        resourceId: s.resources?.[0]?.id,
-      })))
+      setSlots(data.map((s) => {
+        const rid = s.resources?.[0]?.id
+        return {
+          startsAt: s.starts_at,
+          endsAt: s.ends_at,
+          ...(rid !== undefined ? { resourceId: rid } : {}),
+        }
+      }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les créneaux.')
     } finally {

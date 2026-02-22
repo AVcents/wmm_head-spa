@@ -22,7 +22,6 @@ import {
   cancelBooking,
 } from '@/lib/hapio'
 import type { HapioScheduleBlock } from '@/lib/hapio'
-import { getActiveScheduleForHapio } from '@/lib/data'
 
 async function checkAuth() {
   const auth = await isAuthenticated()

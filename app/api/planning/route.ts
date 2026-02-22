@@ -10,7 +10,7 @@ import {
 } from '@/lib/data'
 
 // GET /api/planning — liste les overrides + templates disponibles
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     if (!(await isAuthenticated())) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })

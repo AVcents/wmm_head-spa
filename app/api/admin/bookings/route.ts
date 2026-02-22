@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const booking = await createBooking({
       serviceId: String(hapioServiceId),
       locationId: String(hapioLocationId),
-      resourceId: resourceId ? String(resourceId) : undefined,
+      ...(resourceId ? { resourceId: String(resourceId) } : {}),
       startsAt: String(startsAt),
       endsAt: String(endsAt),
       metadata,
@@ -71,11 +71,11 @@ export async function POST(req: NextRequest) {
         clientEmail: String(email),
         clientPhone: phone ? String(phone) : '',
         serviceName: serviceName ? String(serviceName) : '',
-        variantLabel: variantName ? String(variantName) : undefined,
+        ...(variantName ? { variantLabel: String(variantName) } : {}),
         date: String(startsAt),
         duration: Number(duration ?? 0),
         price: Number(price ?? 0),
-        message: message ? String(message) : undefined,
+        ...(message ? { message: String(message) } : {}),
         bookingId: booking.id,
       }).catch((err) => {
         console.error('[Email] Erreur envoi email réservation admin:', err)

@@ -213,7 +213,7 @@ export default function ReservationContent({
               {currentStep === 'extras' && (
                 <ExtrasStep
                   selectedExtras={booking.selectedExtras}
-                  serviceId={booking.service?.id ?? undefined}
+                  {...(booking.service?.id ? { serviceId: booking.service.id } : {})}
                   onNext={(extras) => {
                     updateBooking({ selectedExtras: extras })
                     goTo('date')

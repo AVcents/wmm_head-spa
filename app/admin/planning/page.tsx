@@ -635,7 +635,7 @@ export default function PlanningPage() {
                 key={day.dayName}
                 day={day}
                 editable={isEditable}
-                onChange={isEditable ? (d) => updateDay(i, d) : undefined}
+                {...(isEditable ? { onChange: (d: DayConfig) => updateDay(i, d) } : {})}
               />
             ))
           )}

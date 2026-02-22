@@ -388,7 +388,7 @@ export default function AdminExtrasPage() {
       {/* Modal création / édition */}
       {editingExtra !== null && (
         <ExtraModal
-          extra={editingExtra === 'new' ? undefined : editingExtra}
+          {...(editingExtra !== 'new' ? { extra: editingExtra } : {})}
           onSave={handleSave}
           onClose={() => setEditingExtra(null)}
         />

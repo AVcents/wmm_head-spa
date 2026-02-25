@@ -87,22 +87,26 @@ export async function POST(req: NextRequest) {
       ? Number(duration)
       : Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000)
 
-    const booking = await createBooking({
-      service_id:     String(serviceId),
-      variant_id:     variantId ? String(variantId) : null,
-      starts_at:      String(startsAt),
-      ends_at:        String(endsAt),
-      duration:       resolvedDuration,
-      client_name:    name    ? String(name)    : 'Admin',
-      client_email:   email   ? String(email)   : '',
-      client_phone:   phone   ? String(phone)   : '',
-      client_message: message ? String(message) : undefined,
-      payment_mode:   'in_person',
-      booked_by:      'admin',
-      price:          price !== undefined ? Number(price) : undefined,
-      service_name:   serviceName  ? String(serviceName)  : '',
-      variant_name:   variantName  ? String(variantName)  : undefined,
-    })
+    // Construire les données de réservation en omettant les propriétés undefined
+    const bookingData: Parameters<typeof createBooking>[0] = {
+      service_id:   String(serviceId),
+      starts_at:    String(startsAt),
+      ends_at:      String(endsAt),
+      duration:     resolvedDuration,
+      client_name:  name ? String(name) : 'Admin',
+      client_email: email ? String(email) : '',
+      payment_mode: 'in_person',
+      booked_by:    'admin',
+      service_name: serviceName ? String(serviceName) : '',
+    }
+
+    if (variantId) bookingData.variant_id = String(variantId)
+    if (phone) bookingData.client_phone = String(phone)
+    if (message) bookingData.client_message = String(message)
+    if (price !== undefined) bookingData.price = Number(price)
+    if (variantName) bookingData.variant_name = String(variantName)
+
+    const booking = await createBooking(bookingData)
 
     // Invalider le cache slots pour ce service/variant et cette date
     const bookingDate = String(startsAt).slice(0, 10)

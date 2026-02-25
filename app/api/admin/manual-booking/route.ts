@@ -110,22 +110,28 @@ export async function POST(req: NextRequest) {
       resolvedServiceName = data?.name ?? ''
     }
 
-    const booking = await createBooking({
-      service_id:    serviceId,
-      variant_id:    variantId ?? null,
-      starts_at:     startsAt,
-      ends_at:       endsAt,
+    // Construire les données en omettant les propriétés undefined
+    const bookingData: Parameters<typeof createBooking>[0] = {
+      service_id:   serviceId,
+      starts_at:    startsAt,
+      ends_at:      endsAt,
       duration,
-      client_name:   clientName,
-      client_email:  clientEmail ?? '',
-      client_phone:  clientPhone ?? '',
-      client_message: note ?? undefined,
-      payment_mode:  'in_person',
-      booked_by:     'admin',
-      note:          note ?? undefined,
-      service_name:  resolvedServiceName,
-      variant_name:  variantName ?? undefined,
-    })
+      client_name:  clientName,
+      client_email: clientEmail ?? '',
+      payment_mode: 'in_person',
+      booked_by:    'admin',
+      service_name: resolvedServiceName,
+    }
+
+    if (variantId) bookingData.variant_id = variantId
+    if (clientPhone) bookingData.client_phone = clientPhone
+    if (note) {
+      bookingData.client_message = note
+      bookingData.note = note
+    }
+    if (variantName) bookingData.variant_name = variantName
+
+    const booking = await createBooking(bookingData)
 
     // Invalider le cache slots
     const bookingDate = startsAt.slice(0, 10)

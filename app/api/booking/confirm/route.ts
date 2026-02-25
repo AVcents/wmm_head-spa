@@ -138,26 +138,30 @@ export async function POST(req: NextRequest) {
     // 3. Créer la réservation dans Supabase
     // ===========================
 
-    const booking = await createBooking({
-      service_id:        body.serviceId,
-      variant_id:        body.variantId ?? null,
-      starts_at:         body.startsAt,
-      ends_at:           body.endsAt,
+    // Construire les données en omettant les propriétés undefined
+    const bookingData: Parameters<typeof createBooking>[0] = {
+      service_id:   body.serviceId,
+      starts_at:    body.startsAt,
+      ends_at:      body.endsAt,
       duration,
-      client_name:       body.clientName,
-      client_email:      body.clientEmail,
-      client_phone:      body.clientPhone,
-      client_message:    body.message,
-      payment_mode:      body.paymentMode,
-      payment_intent_id: body.paymentIntentId,
-      gift_card_code:    body.giftCardCode,
-      price:             body.price,
-      extras_json:       body.extras?.length ? body.extras : undefined,
-      extras_total:      body.extrasTotal,
-      booked_by:         'client',
-      service_name:      body.serviceName,
-      variant_name:      body.variantName,
-    })
+      client_name:  body.clientName,
+      client_email: body.clientEmail,
+      client_phone: body.clientPhone,
+      payment_mode: body.paymentMode,
+      booked_by:    'client',
+      service_name: body.serviceName,
+      price:        body.price,
+    }
+
+    if (body.variantId) bookingData.variant_id = body.variantId
+    if (body.message) bookingData.client_message = body.message
+    if (body.paymentIntentId) bookingData.payment_intent_id = body.paymentIntentId
+    if (body.giftCardCode) bookingData.gift_card_code = body.giftCardCode
+    if (body.extras?.length) bookingData.extras_json = body.extras
+    if (body.extrasTotal !== undefined) bookingData.extras_total = body.extrasTotal
+    if (body.variantName) bookingData.variant_name = body.variantName
+
+    const booking = await createBooking(bookingData)
 
     // ===========================
     // 4. Invalider le cache de créneaux

@@ -16,12 +16,28 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = req.nextUrl
-    const bookings = await getBookings({
-      from:   searchParams.get('from')   ?? undefined,
-      to:     searchParams.get('to')     ?? undefined,
-      status: searchParams.get('status') ?? undefined,
-      limit:  searchParams.get('limit')  ? Number(searchParams.get('limit')) : undefined,
-    })
+
+    // Construire l'objet de paramètres en omettant les valeurs undefined
+    const params: {
+      from?: string
+      to?: string
+      status?: string
+      limit?: number
+    } = {}
+
+    const fromParam = searchParams.get('from')
+    if (fromParam) params.from = fromParam
+
+    const toParam = searchParams.get('to')
+    if (toParam) params.to = toParam
+
+    const statusParam = searchParams.get('status')
+    if (statusParam) params.status = statusParam
+
+    const limitParam = searchParams.get('limit')
+    if (limitParam) params.limit = Number(limitParam)
+
+    const bookings = await getBookings(params)
     return NextResponse.json(bookings)
   } catch (error) {
     console.error('[admin/bookings GET]', error)

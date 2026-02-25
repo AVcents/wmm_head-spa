@@ -20,13 +20,6 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface HapioService {
-  id: string
-  name: string
-  duration?: number
-}
-
-/** Service Supabase enrichi (avec variantes) */
 interface SupabaseService {
   id: string
   name: string
@@ -45,10 +38,16 @@ interface SupabaseService {
   }[]
 }
 
+interface SelectedService {
+  serviceId: string
+  variantId: string | null
+  serviceName: string
+  variantName: string | null
+}
+
 interface Slot {
   startsAt: string
   endsAt: string
-  resourceId?: string
 }
 
 interface ClientInfo {
@@ -78,11 +77,6 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/** Normalise pour comparaison insensible aux accents/casse */
-function normalize(str: string): string {
-  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-}
-
 const CATEGORY_LABELS: Record<string, string> = {
   'headspa-japonais': 'Head Spa Japonais',
   'headspa-holistique': 'Head Spa Holistique',
@@ -94,15 +88,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 function Step1({
   onNext,
 }: {
-  onNext: (service: HapioService, date: string, locationId: string, serviceName: string) => void
+  onNext: (selected: SelectedService, date: string) => void
 }) {
-  const [supaServices, setSupaServices] = useState<SupabaseService[]>([])
-  const [hapioServices, setHapioServices] = useState<HapioService[]>([])
-  const [locationId, setLocationId] = useState('')
+  const [services, setServices] = useState<SupabaseService[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Sélection : service Supabase + variant optionnel
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [date, setDate] = useState(todayIso())
@@ -110,25 +101,10 @@ function Step1({
   useEffect(() => {
     async function load() {
       try {
-        // Charger Supabase services + Hapio location/services en parallèle
-        const [supaRes, locRes] = await Promise.all([
-          fetch('/api/services'),
-          fetch('/api/admin/manual-booking?action=locations'),
-        ])
-        const supaData: SupabaseService[] = await supaRes.json()
-        const locs: { id: string }[] = await locRes.json()
-
-        const firstLoc = locs[0]
-        if (!firstLoc) { setError('Aucun lieu configuré dans Hapio.'); setLoading(false); return }
-        const loc = firstLoc.id
-        setLocationId(loc)
-
-        const svcRes = await fetch(`/api/admin/manual-booking?action=services&locationId=${loc}`)
-        const hapioSvcs: HapioService[] = await svcRes.json()
-        setHapioServices(hapioSvcs)
-
-        // Filtrer services actifs
-        setSupaServices(supaData.filter(s => s.is_active))
+        const res = await fetch('/api/services')
+        if (!res.ok) throw new Error('Erreur chargement services')
+        const data: SupabaseService[] = await res.json()
+        setServices(data.filter(s => s.is_active))
       } catch {
         setError('Impossible de charger les prestations.')
       } finally {
@@ -152,48 +128,33 @@ function Step1({
     </div>
   )
 
-  const selectedSupa = supaServices.find(s => s.id === selectedServiceId)
-  const needsVariant = selectedSupa?.has_variants && (selectedSupa.service_variants?.length ?? 0) > 0
-
-  // Résoudre le service Hapio à partir du nom Supabase
-  const resolveHapioService = (): HapioService | null => {
-    if (!selectedSupa) return null
-    let searchName = selectedSupa.name
-    if (needsVariant && selectedVariantId) {
-      const variant = selectedSupa.service_variants.find(v => v.id === selectedVariantId)
-      if (variant) searchName = variant.name
-    }
-    const norm = normalize(searchName)
-    // Exact match first
-    let match = hapioServices.find(hs => normalize(hs.name) === norm)
-    // Fuzzy: includes
-    if (!match) match = hapioServices.find(hs => normalize(hs.name).includes(norm) || norm.includes(normalize(hs.name)))
-    // Fallback: first word
-    if (!match) {
-      const firstWord = norm.split(' ')[0] ?? ''
-      if (firstWord.length > 2) match = hapioServices.find(hs => normalize(hs.name).startsWith(firstWord))
-    }
-    return match ?? null
-  }
-
-  const hapioMatch = resolveHapioService()
-  const canContinue = !!selectedSupa && !!date && (!needsVariant || !!selectedVariantId) && !!hapioMatch
+  const selectedSupa = services.find(s => s.id === selectedServiceId)
+  const needsVariant = !!(selectedSupa?.has_variants && (selectedSupa.service_variants?.length ?? 0) > 0)
+  const canContinue = !!selectedSupa && !!date && (!needsVariant || !!selectedVariantId)
 
   const handleNext = () => {
-    if (!canContinue || !hapioMatch || !selectedSupa) return
-    let displayName = selectedSupa.name
+    if (!canContinue || !selectedSupa) return
+    let serviceName = selectedSupa.name
+    let variantName: string | null = null
+
     if (needsVariant && selectedVariantId) {
       const v = selectedSupa.service_variants.find(v => v.id === selectedVariantId)
-      if (v) displayName = `${selectedSupa.name} – ${v.hair_length_label}`
+      if (v) {
+        serviceName = `${selectedSupa.name} – ${v.hair_length_label}`
+        variantName = v.hair_length_label
+      }
     }
-    onNext(hapioMatch, date, locationId, displayName)
+
+    onNext(
+      { serviceId: selectedSupa.id, variantId: selectedVariantId, serviceName, variantName },
+      date
+    )
   }
 
-  // Regrouper par catégorie
-  const byCategory = supaServices.reduce<Record<string, SupabaseService[]>>((acc, s) => {
+  const byCategory = services.reduce<Record<string, SupabaseService[]>>((acc, s) => {
     const cat = s.category || 'autre'
     if (!acc[cat]) acc[cat] = []
-    acc[cat].push(s)
+    acc[cat]!.push(s)
     return acc
   }, {})
 
@@ -207,13 +168,13 @@ function Step1({
         </h2>
 
         <div className="space-y-6">
-          {Object.entries(byCategory).map(([category, services]) => (
+          {Object.entries(byCategory).map(([category, svcs]) => (
             <div key={category}>
               <h3 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
                 {CATEGORY_LABELS[category] ?? category}
               </h3>
               <div className="space-y-2">
-                {services.map((svc) => {
+                {svcs.map((svc) => {
                   const isSelected = selectedServiceId === svc.id
                   return (
                     <div key={svc.id}>
@@ -298,14 +259,6 @@ function Step1({
             </div>
           ))}
         </div>
-
-        {/* Alerte si pas de correspondance Hapio */}
-        {selectedSupa && (!needsVariant || selectedVariantId) && !hapioMatch && (
-          <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-sm">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            Aucun service correspondant trouvé dans Hapio. Vérifiez la configuration.
-          </div>
-        )}
       </div>
 
       {/* Date */}
@@ -317,7 +270,6 @@ function Step1({
         <input
           type="date"
           value={date}
-          min={todayIso()}
           onChange={(e) => setDate(e.target.value)}
           className="w-full sm:w-72 px-4 py-3 rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
         />
@@ -342,15 +294,13 @@ function Step1({
 // ─── Étape 2 : Créneau horaire ────────────────────────────────────────────────
 
 function Step2({
-  service,
+  selected,
   date,
-  locationId,
   onSelect,
   onBack,
 }: {
-  service: HapioService
+  selected: SelectedService
   date: string
-  locationId: string
   onSelect: (slot: Slot) => void
   onBack: () => void
 }) {
@@ -362,29 +312,26 @@ function Step2({
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(
-        `/api/admin/manual-booking?action=slots&serviceId=${service.id}&locationId=${locationId}&from=${date}&to=${date}`
-      )
-      if (!res.ok) throw new Error('Erreur lors du chargement des créneaux')
-      const data: { starts_at: string; ends_at: string; resources?: { id: string }[] }[] = await res.json()
-      setSlots(data.map((s) => {
-        const rid = s.resources?.[0]?.id
-        return {
-          startsAt: s.starts_at,
-          endsAt: s.ends_at,
-          ...(rid !== undefined ? { resourceId: rid } : {}),
-        }
-      }))
+      const params = new URLSearchParams({ action: 'slots', serviceId: selected.serviceId, date })
+      if (selected.variantId) params.set('variantId', selected.variantId)
+
+      const res = await fetch(`/api/admin/manual-booking?${params.toString()}`)
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error((data as { error?: string }).error ?? 'Erreur lors du chargement des créneaux')
+      }
+      const data: { starts_at: string; ends_at: string }[] = await res.json()
+      setSlots(data.map(s => ({ startsAt: s.starts_at, endsAt: s.ends_at })))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les créneaux.')
     } finally {
       setLoading(false)
     }
-  }, [service.id, locationId, date])
+  }, [selected.serviceId, selected.variantId, date])
 
   useEffect(() => { void fetchSlots() }, [fetchSlots])
 
-  const morningSlots = slots.filter((s) => new Date(s.startsAt).getHours() < 12)
+  const morningSlots   = slots.filter((s) => new Date(s.startsAt).getHours() < 12)
   const afternoonSlots = slots.filter((s) => new Date(s.startsAt).getHours() >= 12)
 
   return (
@@ -392,7 +339,7 @@ function Step2({
       <div>
         <h2 className="text-lg font-medium text-foreground mb-1">Créneau disponible</h2>
         <p className="text-sm text-foreground-secondary capitalize">
-          {service.name} · {formatDateFr(date)}
+          {selected.serviceName} · {formatDateFr(date)}
         </p>
       </div>
 
@@ -479,10 +426,10 @@ function Step3({
   onNext: (info: ClientInfo) => void
   onBack: () => void
 }) {
-  const [name, setName] = useState('')
+  const [name, setName]   = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [note, setNote] = useState('')
+  const [note, setNote]   = useState('')
 
   const inputClass =
     'w-full px-4 py-3 rounded-xl border border-border bg-surface text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-sm'
@@ -495,7 +442,6 @@ function Step3({
       </div>
 
       <div className="space-y-4 max-w-md">
-        {/* Nom */}
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-1.5">
             <User className="h-4 w-4 text-primary-500" />
@@ -510,7 +456,6 @@ function Step3({
           />
         </div>
 
-        {/* Téléphone */}
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-1.5">
             <Phone className="h-4 w-4 text-primary-500" />
@@ -525,7 +470,6 @@ function Step3({
           />
         </div>
 
-        {/* Email */}
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-1.5">
             <Mail className="h-4 w-4 text-primary-500" />
@@ -540,7 +484,6 @@ function Step3({
           />
         </div>
 
-        {/* Note */}
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-1.5">
             <MessageSquare className="h-4 w-4 text-primary-500" />
@@ -582,24 +525,22 @@ function Step3({
 // ─── Étape 4 : Récap + Confirmation ──────────────────────────────────────────
 
 function Step4({
-  service,
+  selected,
   date,
   slot,
   client,
-  locationId,
   onBack,
   onSuccess,
 }: {
-  service: HapioService
+  selected: SelectedService
   date: string
   slot: Slot
   client: ClientInfo
-  locationId: string
   onBack: () => void
   onSuccess: (bookingId: string) => void
 }) {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]     = useState<string | null>(null)
 
   const confirm = async () => {
     setLoading(true)
@@ -609,16 +550,16 @@ function Step4({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          serviceId: service.id,
-          locationId,
-          resourceId: slot.resourceId,
-          startsAt: slot.startsAt,
-          endsAt: slot.endsAt,
-          clientName: client.name,
-          clientEmail: client.email || undefined,
-          clientPhone: client.phone || undefined,
-          note: client.note || undefined,
-          serviceName: service.name,
+          serviceId:   selected.serviceId,
+          variantId:   selected.variantId ?? undefined,
+          startsAt:    slot.startsAt,
+          endsAt:      slot.endsAt,
+          clientName:  client.name,
+          clientEmail: client.email  || undefined,
+          clientPhone: client.phone  || undefined,
+          note:        client.note   || undefined,
+          serviceName: selected.serviceName,
+          variantName: selected.variantName ?? undefined,
         }),
       })
       const data = await res.json()
@@ -631,7 +572,7 @@ function Step4({
     }
   }
 
-  const rowClass = 'flex items-start justify-between py-2.5 border-b border-border last:border-0'
+  const rowClass   = 'flex items-start justify-between py-2.5 border-b border-border last:border-0'
   const labelClass = 'text-sm text-foreground-secondary'
   const valueClass = 'text-sm font-medium text-foreground text-right max-w-xs'
 
@@ -645,7 +586,7 @@ function Step4({
       <div className="bg-primary-50/50 dark:bg-primary-900/10 border border-primary-200 dark:border-primary-800/30 rounded-2xl p-6 max-w-md">
         <div className={rowClass}>
           <span className={labelClass}>Prestation</span>
-          <span className={valueClass}>{service.name}</span>
+          <span className={valueClass}>{selected.serviceName}</span>
         </div>
         <div className={rowClass}>
           <span className={labelClass}>Date</span>
@@ -653,9 +594,7 @@ function Step4({
         </div>
         <div className={rowClass}>
           <span className={labelClass}>Heure</span>
-          <span className={valueClass}>
-            {formatTime(slot.startsAt)} → {formatTime(slot.endsAt)}
-          </span>
+          <span className={valueClass}>{formatTime(slot.startsAt)} → {formatTime(slot.endsAt)}</span>
         </div>
         <div className={rowClass}>
           <span className={labelClass}>Client</span>
@@ -727,19 +666,17 @@ type WizardStep = 1 | 2 | 3 | 4 | 'success'
 const STEP_LABELS = ['Prestation & date', 'Créneau', 'Client', 'Confirmation']
 
 export default function AdminManualBookingPage() {
-  const [step, setStep] = useState<WizardStep>(1)
-  const [service, setService] = useState<HapioService | null>(null)
-  const [date, setDate] = useState('')
-  const [locationId, setLocationId] = useState('')
-  const [slot, setSlot] = useState<Slot | null>(null)
-  const [client, setClient] = useState<ClientInfo | null>(null)
+  const [step, setStep]         = useState<WizardStep>(1)
+  const [selected, setSelected] = useState<SelectedService | null>(null)
+  const [date, setDate]         = useState('')
+  const [slot, setSlot]         = useState<Slot | null>(null)
+  const [client, setClient]     = useState<ClientInfo | null>(null)
   const [bookingId, setBookingId] = useState('')
 
   const reset = () => {
     setStep(1)
-    setService(null)
+    setSelected(null)
     setDate('')
-    setLocationId('')
     setSlot(null)
     setClient(null)
     setBookingId('')
@@ -754,7 +691,7 @@ export default function AdminManualBookingPage() {
           Réservation manuelle
         </h1>
         <p className="text-foreground-secondary">
-          Créez une réservation pour un client directement depuis l'espace admin. Paiement encaissé sur place.
+          Créez une réservation pour un client directement depuis l&apos;espace admin. Paiement encaissé sur place.
         </p>
       </div>
 
@@ -771,7 +708,7 @@ export default function AdminManualBookingPage() {
               Réservation créée !
             </h2>
             <p className="text-foreground-secondary text-sm">
-              Réf. Hapio : <span className="font-mono text-xs bg-surface border border-border px-2 py-1 rounded">{bookingId}</span>
+              Réf. : <span className="font-mono text-xs bg-surface border border-border px-2 py-1 rounded">{bookingId}</span>
             </p>
             {client?.email && (
               <p className="text-foreground-muted text-sm mt-2">
@@ -790,27 +727,24 @@ export default function AdminManualBookingPage() {
         </div>
       )}
 
-      {/* Stepper (masqué en mode succès) */}
+      {/* Stepper */}
       {step !== 'success' && (
         <>
-          {/* Indicateurs d'étapes */}
           <div className="flex items-center gap-2 mb-10 overflow-x-auto pb-2">
             {STEP_LABELS.map((label, idx) => {
               const n = (idx + 1) as 1 | 2 | 3 | 4
-              const isDone = typeof step === 'number' && step > n
+              const isDone   = typeof step === 'number' && step > n
               const isActive = step === n
               return (
                 <div key={n} className="flex items-center gap-2 min-w-0">
                   <div className="flex items-center gap-2 shrink-0">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                        isDone
-                          ? 'bg-primary-600 text-white'
-                          : isActive
-                            ? 'bg-primary-600 text-white ring-4 ring-primary-200 dark:ring-primary-900/40'
-                            : 'bg-surface border-2 border-border text-foreground-muted'
-                      }`}
-                    >
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      isDone
+                        ? 'bg-primary-600 text-white'
+                        : isActive
+                          ? 'bg-primary-600 text-white ring-4 ring-primary-200 dark:ring-primary-900/40'
+                          : 'bg-surface border-2 border-border text-foreground-muted'
+                    }`}>
                       {isDone ? <Check className="h-4 w-4" /> : n}
                     </div>
                     <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-foreground' : 'text-foreground-muted'}`}>
@@ -825,24 +759,21 @@ export default function AdminManualBookingPage() {
             })}
           </div>
 
-          {/* Contenu de l'étape */}
           <div className="bg-surface border border-border rounded-2xl p-6 lg:p-8">
             {step === 1 && (
               <Step1
-                onNext={(svc, d, loc) => {
-                  setService(svc)
+                onNext={(sel, d) => {
+                  setSelected(sel)
                   setDate(d)
-                  setLocationId(loc)
                   setStep(2)
                 }}
               />
             )}
 
-            {step === 2 && service && (
+            {step === 2 && selected && (
               <Step2
-                service={service}
+                selected={selected}
                 date={date}
-                locationId={locationId}
                 onSelect={(s) => {
                   setSlot(s)
                   setStep(3)
@@ -861,13 +792,12 @@ export default function AdminManualBookingPage() {
               />
             )}
 
-            {step === 4 && service && slot && client && (
+            {step === 4 && selected && slot && client && (
               <Step4
-                service={service}
+                selected={selected}
                 date={date}
                 slot={slot}
                 client={client}
-                locationId={locationId}
                 onBack={() => setStep(3)}
                 onSuccess={(id) => {
                   setBookingId(id)

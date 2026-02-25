@@ -86,3 +86,30 @@ export interface PlanningOverrideRow {
   created_at: string
   updated_at: string
 }
+
+export interface BookingRow {
+  id: string
+  service_id: string
+  variant_id: string | null
+  starts_at: string       // ISO UTC
+  ends_at: string         // ISO UTC
+  duration: number        // minutes
+  status: 'confirmed' | 'cancelled' | 'no_show'
+  cancelled_at: string | null
+  client_name: string
+  client_email: string
+  client_phone: string
+  client_message: string | null
+  payment_mode: 'hold' | 'direct' | 'gift_card' | 'in_person'
+  payment_intent_id: string | null
+  gift_card_code: string | null
+  price: number | null
+  extras_json: Array<{ name: string; price: number }> | null
+  extras_total: number | null
+  booked_by: 'client' | 'admin'
+  note: string | null
+  service_name: string
+  variant_name: string | null
+  created_at: string
+  updated_at: string
+}

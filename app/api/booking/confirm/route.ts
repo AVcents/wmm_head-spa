@@ -1,7 +1,14 @@
+// ============================================
+// app/api/booking/confirm/route.ts
+// Confirmation de réservation après paiement Stripe ou bon cadeau
+// Remplace createBooking Hapio par un insert Supabase
+// ============================================
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createBooking } from '@/lib/hapio'
+import { createBooking } from '@/lib/supabase/bookings'
+import { invalidateSlotsCache } from '@/lib/data'
 import { sendBookingEmails } from '@/lib/email'
 
 // ---------- Types ----------
@@ -9,11 +16,10 @@ import { sendBookingEmails } from '@/lib/email'
 interface ConfirmBody {
   paymentIntentId?: string
   giftCardCode?: string
-  hapioServiceId: string
-  hapioLocationId: string
+  serviceId: string
+  variantId?: string
   startsAt: string
   endsAt: string
-  resourceId?: string
   clientName: string
   clientEmail: string
   clientPhone: string
@@ -34,8 +40,7 @@ export async function POST(req: NextRequest) {
 
     // Validation de base
     if (
-      !body.hapioServiceId ||
-      !body.hapioLocationId ||
+      !body.serviceId ||
       !body.startsAt ||
       !body.endsAt ||
       !body.clientName ||
@@ -65,7 +70,6 @@ export async function POST(req: NextRequest) {
     // ===========================
 
     if (body.paymentMode === 'hold' || body.paymentMode === 'direct') {
-      // Pour hold et direct, vérifier le PaymentIntent
       if (!body.paymentIntentId) {
         return NextResponse.json(
           { error: 'PaymentIntent ID requis pour ce mode de paiement' },
@@ -75,8 +79,6 @@ export async function POST(req: NextRequest) {
 
       const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId)
 
-      // hold → requires_capture (authorization successful)
-      // direct → succeeded (payment completed)
       if (body.paymentMode === 'hold' && pi.status !== 'requires_capture') {
         return NextResponse.json(
           { error: `Empreinte bancaire non confirmée (status: ${pi.status})` },
@@ -100,21 +102,19 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Re-vérifier le bon cadeau (protection serveur)
       const { data: card, error: dbError } = await supabase
         .from('gift_cards')
         .select('*')
         .eq('code', body.giftCardCode.toUpperCase().trim())
         .single()
 
-      if (dbError || !card || card.used) {
+      if (dbError || !card || (card as { used: boolean }).used) {
         return NextResponse.json(
           { error: 'Bon cadeau invalide ou déjà utilisé' },
           { status: 400 }
         )
       }
 
-      // Si paiement partiel, vérifier le PI aussi
       if (body.paymentIntentId) {
         const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId)
         if (pi.status !== 'succeeded') {
@@ -127,81 +127,81 @@ export async function POST(req: NextRequest) {
     }
 
     // ===========================
-    // 2. Créer la réservation Hapio
+    // 2. Durée calculée
     // ===========================
 
-    const duration = body.endsAt && body.startsAt
-      ? Math.round(
-          (new Date(body.endsAt).getTime() - new Date(body.startsAt).getTime()) /
-            60000
-        )
-      : 0
-
-    const bookingParams: Parameters<typeof createBooking>[0] = {
-      serviceId: body.hapioServiceId,
-      locationId: body.hapioLocationId,
-      startsAt: body.startsAt,
-      endsAt: body.endsAt,
-      metadata: {
-        name: body.clientName,
-        email: body.clientEmail,
-        phone: body.clientPhone,
-        message: body.message ?? '',
-        service_name: body.serviceName,
-        variant_name: body.variantName ?? '',
-        price: String(body.price),
-        duration: String(duration),
-        payment_mode: body.paymentMode,
-        payment_intent_id: body.paymentIntentId ?? '',
-        gift_card_code: body.giftCardCode ?? '',
-        extras_json: body.extras && body.extras.length > 0
-          ? JSON.stringify(body.extras)
-          : '',
-        extras_total: String(body.extrasTotal ?? 0),
-      },
-    }
-    if (body.resourceId) {
-      bookingParams.resourceId = body.resourceId
-    }
-
-    const booking = await createBooking(bookingParams)
+    const duration = Math.round(
+      (new Date(body.endsAt).getTime() - new Date(body.startsAt).getTime()) / 60_000
+    )
 
     // ===========================
-    // 3. Marquer le bon cadeau comme utilisé
+    // 3. Créer la réservation dans Supabase
+    // ===========================
+
+    const booking = await createBooking({
+      service_id:        body.serviceId,
+      variant_id:        body.variantId ?? null,
+      starts_at:         body.startsAt,
+      ends_at:           body.endsAt,
+      duration,
+      client_name:       body.clientName,
+      client_email:      body.clientEmail,
+      client_phone:      body.clientPhone,
+      client_message:    body.message,
+      payment_mode:      body.paymentMode,
+      payment_intent_id: body.paymentIntentId,
+      gift_card_code:    body.giftCardCode,
+      price:             body.price,
+      extras_json:       body.extras?.length ? body.extras : undefined,
+      extras_total:      body.extrasTotal,
+      booked_by:         'client',
+      service_name:      body.serviceName,
+      variant_name:      body.variantName,
+    })
+
+    // ===========================
+    // 4. Invalider le cache de créneaux
+    // ===========================
+
+    const bookingDate = body.startsAt.slice(0, 10)
+    invalidateSlotsCache(body.variantId ?? body.serviceId, bookingDate).catch(() => {})
+
+    // ===========================
+    // 5. Marquer le bon cadeau comme utilisé
     // ===========================
 
     if (body.paymentMode === 'gift_card' && body.giftCardCode) {
       await supabase
         .from('gift_cards')
         .update({
-          used: true,
-          used_at: new Date().toISOString(),
+          used:            true,
+          used_at:         new Date().toISOString(),
           used_booking_id: booking.id,
         })
         .eq('code', body.giftCardCode.toUpperCase().trim())
     }
 
     // ===========================
-    // 4. Envoyer les emails de confirmation (non bloquant)
+    // 6. Envoyer les emails (non bloquant)
     // ===========================
 
     const emailData: Parameters<typeof sendBookingEmails>[0] = {
-      clientName: body.clientName,
+      clientName:  body.clientName,
       clientEmail: body.clientEmail,
       clientPhone: body.clientPhone,
       serviceName: body.serviceName,
-      date: body.startsAt,
+      date:        body.startsAt,
       duration,
-      price: body.price,
-      bookingId: booking.id,
+      price:       body.price,
+      bookingId:   booking.id,
     }
-    if (body.variantName) emailData.variantLabel = body.variantName
-    if (body.message) emailData.message = body.message
-    if (body.giftCardCode) emailData.giftCardCode = body.giftCardCode
-    if (body.extras && body.extras.length > 0) emailData.extras = body.extras
+    if (body.variantName)    emailData.variantLabel = body.variantName
+    if (body.message)        emailData.message      = body.message
+    if (body.giftCardCode)   emailData.giftCardCode = body.giftCardCode
+    if (body.extras?.length) emailData.extras       = body.extras
 
     sendBookingEmails(emailData).catch((err) => {
-      console.error('[confirm] Erreur envoi email réservation:', err)
+      console.error('[confirm] Erreur envoi email:', err)
     })
 
     return NextResponse.json({ bookingId: booking.id })

@@ -5,20 +5,15 @@ import { Clock, Loader2, AlertCircle } from 'lucide-react'
 import type { Service } from '@/lib/services-data'
 
 interface Slot {
-  startsAt: string
-  endsAt: string
-  resourceId?: string
+  starts_at: string
+  ends_at: string
 }
 
 interface Props {
   service: Service
   variantId: string | null
   date: string
-  onSelect: (
-    slot: { startsAt: string; endsAt: string; resourceId?: string },
-    hapioServiceId: string,
-    hapioLocationId: string
-  ) => void
+  onSelect: (slot: { startsAt: string; endsAt: string }) => void
 }
 
 function formatTime(isoString: string): string {
@@ -38,37 +33,10 @@ function formatDateFr(dateStr: string): string {
   })
 }
 
-// Normalise une chaîne pour la comparaison : minuscules + sans accents
-function normalize(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-}
-
-// Matching robuste entre nom local et nom Hapio
-function matchServiceName(localName: string, hapioName: string): boolean {
-  const local = normalize(localName)
-  const hapio = normalize(hapioName)
-  // Correspondance exacte ou inclusion croisée sur le premier mot significatif
-  const localWord = local.split(' ')[0] ?? ''
-  const hapioWord = hapio.split(' ')[0] ?? ''
-  return (
-    local === hapio ||
-    hapio.includes(local) ||
-    local.includes(hapio) ||
-    (localWord.length > 2 && hapio.startsWith(localWord)) ||
-    (hapioWord.length > 2 && local.startsWith(hapioWord))
-  )
-}
-
 export function SlotStep({ service, variantId, date, onSelect }: Props) {
   const [slots, setSlots] = useState<Slot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // IDs Hapio résolus, stockés ici pour être passés à onSelect
-  const [resolvedHapioServiceId, setResolvedHapioServiceId] = useState<string>('')
-  const [resolvedHapioLocationId, setResolvedHapioLocationId] = useState<string>('')
 
   useEffect(() => {
     async function fetchSlots() {
@@ -76,73 +44,25 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
       setError(null)
 
       try {
-        // 1. Récupérer la location Hapio
-        const locRes = await fetch('/api/booking?action=locations')
-        const locations = await locRes.json()
+        // Appel direct avec les IDs Supabase — plus de matching Hapio
+        const params = new URLSearchParams({
+          action:    'slots',
+          serviceId: service.id,
+          date,
+        })
+        if (variantId) params.set('variantId', variantId)
 
-        const firstLocation = locations[0]
-        if (!firstLocation) {
-          setError('Aucun lieu configuré. Contactez le salon.')
-          return
+        const res = await fetch(`/api/booking?${params.toString()}`)
+        const data = await res.json()
+
+        if (!res.ok) {
+          throw new Error((data as { error?: string }).error ?? 'Erreur lors du chargement des créneaux')
         }
 
-        const locationId: string = firstLocation.id
-
-        // 2. Récupérer les services Hapio
-        const svcRes = await fetch(`/api/booking?action=services&locationId=${locationId}`)
-        const hapioServices: { id: string; name: string }[] = await svcRes.json()
-
-        if (!hapioServices.length) {
-          setError('Aucune prestation configurée dans le système de réservation.')
-          return
-        }
-
-        // 3. Matching : variant exact en priorité, sinon prestation par nom
-        const selectedVariant = variantId
-          ? service.variants?.find((v) => v.id === variantId) ?? null
-          : null
-
-        // Essai 1 : correspondance exacte (normalisée) avec le nom du variant
-        let matchedService: { id: string; name: string } | null | undefined = null
-        if (selectedVariant) {
-          const variantNorm = normalize(selectedVariant.name)
-          matchedService = hapioServices.find((hs) => normalize(hs.name) === variantNorm) ?? null
-        }
-
-        // Essai 2 : fallback par nom de prestation (matching flou)
-        if (!matchedService) {
-          matchedService =
-            hapioServices.find((hs) => matchServiceName(service.name, hs.name)) ??
-            hapioServices[0] ??
-            null
-        }
-
-        if (!matchedService) {
-          setError('Prestation non configurée dans le système de réservation.')
-          return
-        }
-
-        // Stocker les IDs résolus
-        setResolvedHapioServiceId(matchedService.id)
-        setResolvedHapioLocationId(locationId)
-
-        console.log('[Slots] Service Hapio utilisé:', matchedService.name, '→', matchedService.id)
-
-        // 4. Récupérer les créneaux avec les vrais IDs Hapio
-        const slotsRes = await fetch(
-          `/api/booking?action=slots&serviceId=${matchedService.id}&locationId=${locationId}&from=${date}&to=${date}`
-        )
-
-        if (!slotsRes.ok) {
-          throw new Error('Erreur lors du chargement des créneaux')
-        }
-
-        const slotsData = await slotsRes.json()
         setSlots(
-          slotsData.map((s: { starts_at: string; ends_at: string; resources?: { id: string }[] }) => ({
-            startsAt: s.starts_at,
-            endsAt: s.ends_at,
-            resourceId: s.resources?.[0]?.id,
+          (data as Array<{ starts_at: string; ends_at: string }>).map(s => ({
+            starts_at: s.starts_at,
+            ends_at:   s.ends_at,
           }))
         )
       } catch (err) {
@@ -154,17 +74,11 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
     }
 
     fetchSlots()
-  }, [service, variantId, date])
+  }, [service.id, variantId, date])
 
-  // Grouper les créneaux par matin / après-midi
-  const morningSlots = slots.filter((s) => {
-    const hour = new Date(s.startsAt).getHours()
-    return hour < 12
-  })
-  const afternoonSlots = slots.filter((s) => {
-    const hour = new Date(s.startsAt).getHours()
-    return hour >= 12
-  })
+  // Grouper par matin / après-midi
+  const morningSlots   = slots.filter(s => new Date(s.starts_at).getHours() < 12)
+  const afternoonSlots = slots.filter(s => new Date(s.starts_at).getHours() >= 12)
 
   return (
     <div>
@@ -211,11 +125,11 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {morningSlots.map((slot) => (
                   <button
-                    key={slot.startsAt}
-                    onClick={() => onSelect(slot, resolvedHapioServiceId, resolvedHapioLocationId)}
+                    key={slot.starts_at}
+                    onClick={() => onSelect({ startsAt: slot.starts_at, endsAt: slot.ends_at })}
                     className="px-4 py-3 rounded-xl border-2 border-border bg-surface text-foreground font-medium hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all text-center"
                   >
-                    {formatTime(slot.startsAt)}
+                    {formatTime(slot.starts_at)}
                   </button>
                 ))}
               </div>
@@ -230,11 +144,11 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {afternoonSlots.map((slot) => (
                   <button
-                    key={slot.startsAt}
-                    onClick={() => onSelect(slot, resolvedHapioServiceId, resolvedHapioLocationId)}
+                    key={slot.starts_at}
+                    onClick={() => onSelect({ startsAt: slot.starts_at, endsAt: slot.ends_at })}
                     className="px-4 py-3 rounded-xl border-2 border-border bg-surface text-foreground font-medium hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all text-center"
                   >
-                    {formatTime(slot.startsAt)}
+                    {formatTime(slot.starts_at)}
                   </button>
                 ))}
               </div>

@@ -6,7 +6,6 @@ import {
   setActiveTemplate,
   createScheduleTemplate,
 } from '@/lib/data'
-import { syncPlanningToHapio } from '@/lib/sync-schedule'
 
 export async function GET() {
   try {
@@ -75,25 +74,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Erreur mise à jour' }, { status: 500 })
     }
 
-    // 2. Synchroniser avec Hapio (non bloquant en cas d'erreur partielle)
-    let syncResult: { deleted: number; created: number; weeks?: number } | null = null
-    try {
-      syncResult = await syncPlanningToHapio()
-    } catch (syncErr) {
-      console.error('[schedule PUT] Erreur sync Hapio:', syncErr)
-      // On ne bloque pas — Supabase est à jour, Hapio peut être sync manuellement
-      return NextResponse.json({
-        success: true,
-        hapioSync: false,
-        hapioError: syncErr instanceof Error ? syncErr.message : 'Erreur inconnue',
-      })
-    }
-
-    return NextResponse.json({
-      success: true,
-      hapioSync: true,
-      ...syncResult,
-    })
+    return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }

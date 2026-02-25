@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAuthenticated } from '@/lib/auth'
-import {
-  getLocations,
-  getHapioServices,
-  getBookableSlots,
-  createBooking,
-} from '@/lib/hapio'
+import { generateSlots } from '@/lib/slots'
+import { createBooking } from '@/lib/supabase/bookings'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingEmails } from '@/lib/email'
+import { invalidateSlotsCache } from '@/lib/data'
 
 function errorJson(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status })
 }
 
-// GET /api/admin/manual-booking?action=locations|services|slots
+// GET /api/admin/manual-booking?action=slots&serviceId=X&variantId=Y&date=YYYY-MM-DD
 export async function GET(req: NextRequest) {
   const auth = await isAuthenticated()
   if (!auth) return errorJson('Non autorisé', 401)
@@ -20,37 +18,48 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const action = searchParams.get('action')
 
+  if (action !== 'slots') {
+    return errorJson('Action invalide. Utiliser : slots')
+  }
+
   try {
-    switch (action) {
-      case 'locations': {
-        const locations = await getLocations()
-        return NextResponse.json(locations)
-      }
+    const serviceId = searchParams.get('serviceId')
+    const variantId = searchParams.get('variantId') ?? null
+    const date      = searchParams.get('date')
 
-      case 'services': {
-        const locationId = searchParams.get('locationId') ?? undefined
-        const services = await getHapioServices(locationId)
-        return NextResponse.json(services)
-      }
-
-      case 'slots': {
-        const serviceId = searchParams.get('serviceId')
-        const locationId = searchParams.get('locationId')
-        const from = searchParams.get('from')
-        const to = searchParams.get('to')
-
-        if (!serviceId || !locationId || !from || !to) {
-          return errorJson('serviceId, locationId, from et to sont requis')
-        }
-
-        const slots = await getBookableSlots({ serviceId, locationId, from, to })
-        // NOTE : Pas de filtre 24h pour les réservations admin — Gwen peut réserver n'importe quand
-        return NextResponse.json(slots)
-      }
-
-      default:
-        return errorJson('Action invalide. Utiliser : locations, services, slots')
+    if (!serviceId || !date) {
+      return errorJson('serviceId et date sont requis')
     }
+
+    // Résoudre la durée depuis Supabase
+    const supabase = createAdminClient()
+    let duration: number | null = null
+
+    if (variantId) {
+      const { data } = await supabase
+        .from('service_variants')
+        .select('duration')
+        .eq('id', variantId)
+        .single()
+      duration = data?.duration ?? null
+    }
+
+    if (duration === null) {
+      const { data } = await supabase
+        .from('services')
+        .select('duration')
+        .eq('id', serviceId)
+        .single()
+      duration = data?.duration ?? null
+    }
+
+    if (!duration) {
+      return errorJson('Durée introuvable pour ce service')
+    }
+
+    // adminMode = true → pas de filtre 24h
+    const slots = await generateSlots(variantId ?? serviceId, duration, date, true)
+    return NextResponse.json(slots)
   } catch (error) {
     console.error('[admin/manual-booking GET]', error)
     return NextResponse.json(
@@ -60,7 +69,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/admin/manual-booking — Créer une réservation manuelle (sans paiement)
+// POST /api/admin/manual-booking — Créer une réservation manuelle (sans paiement Stripe)
 export async function POST(req: NextRequest) {
   const auth = await isAuthenticated()
   if (!auth) return errorJson('Non autorisé', 401)
@@ -70,8 +79,7 @@ export async function POST(req: NextRequest) {
 
     const {
       serviceId,
-      locationId,
-      resourceId,
+      variantId,
       startsAt,
       endsAt,
       clientName,
@@ -79,36 +87,49 @@ export async function POST(req: NextRequest) {
       clientPhone,
       note,
       serviceName,
+      variantName,
     } = body
 
-    if (!serviceId || !locationId || !startsAt || !endsAt || !clientName) {
-      return errorJson('serviceId, locationId, startsAt, endsAt et clientName sont requis')
+    if (!serviceId || !startsAt || !endsAt || !clientName) {
+      return errorJson('serviceId, startsAt, endsAt et clientName sont requis')
     }
 
     const duration = Math.round(
       (new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000
     )
 
-    const bookingParams: Parameters<typeof createBooking>[0] = {
-      serviceId,
-      locationId,
-      startsAt,
-      endsAt,
-      metadata: {
-        name: clientName,
-        email: clientEmail ?? '',
-        phone: clientPhone ?? '',
-        message: note ?? '',
-        service_name: serviceName ?? '',
-        payment_mode: 'in_person',
-        booked_by: 'admin',
-        duration: String(duration),
-        price: '0',
-      },
+    // Récupérer le service_name depuis Supabase si non fourni
+    let resolvedServiceName = serviceName ?? ''
+    if (!resolvedServiceName) {
+      const supabase = createAdminClient()
+      const { data } = await supabase
+        .from('services')
+        .select('name')
+        .eq('id', serviceId)
+        .single()
+      resolvedServiceName = data?.name ?? ''
     }
-    if (resourceId) bookingParams.resourceId = resourceId
 
-    const booking = await createBooking(bookingParams)
+    const booking = await createBooking({
+      service_id:    serviceId,
+      variant_id:    variantId ?? null,
+      starts_at:     startsAt,
+      ends_at:       endsAt,
+      duration,
+      client_name:   clientName,
+      client_email:  clientEmail ?? '',
+      client_phone:  clientPhone ?? '',
+      client_message: note ?? undefined,
+      payment_mode:  'in_person',
+      booked_by:     'admin',
+      note:          note ?? undefined,
+      service_name:  resolvedServiceName,
+      variant_name:  variantName ?? undefined,
+    })
+
+    // Invalider le cache slots
+    const bookingDate = startsAt.slice(0, 10)
+    invalidateSlotsCache(variantId ?? serviceId, bookingDate).catch(() => {})
 
     // Email de confirmation uniquement si email fourni
     if (clientEmail) {
@@ -116,10 +137,11 @@ export async function POST(req: NextRequest) {
         clientName,
         clientEmail,
         clientPhone: clientPhone ?? '',
-        serviceName: serviceName ?? '',
-        date: startsAt,
+        serviceName: resolvedServiceName,
+        ...(variantName ? { variantLabel: variantName } : {}),
+        date:      startsAt,
         duration,
-        price: 0,
+        price:     0,
         bookingId: booking.id,
         ...(note ? { message: note } : {}),
       }).catch((err) => {

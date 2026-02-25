@@ -6,17 +6,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 interface CreateIntentBody {
   paymentMethod: 'hold' | 'direct' | 'gift_card'
-  amount: number // prix en €
+  amount: number          // prix en €
   giftCardCode?: string
-  serviceId: string // service local ID (pour valider le bon)
+  serviceId: string       // ID Supabase du service (pour valider le bon cadeau)
   clientName: string
   clientEmail: string
   // Infos booking (stockées dans metadata Stripe)
-  hapioServiceId: string
-  hapioLocationId: string
   startsAt: string
   endsAt: string
-  resourceId?: string
   serviceName: string
 }
 
@@ -43,18 +40,13 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe()
 
-    // Metadata commune
+    // Metadata commune (sans références Hapio)
     const baseMeta: Record<string, string> = {
-      clientName: body.clientName,
+      clientName:  body.clientName,
       clientEmail: body.clientEmail,
       serviceName: body.serviceName,
-      hapioServiceId: body.hapioServiceId,
-      hapioLocationId: body.hapioLocationId,
-      startsAt: body.startsAt,
-      endsAt: body.endsAt,
-    }
-    if (body.resourceId) {
-      baseMeta['resourceId'] = body.resourceId
+      startsAt:    body.startsAt,
+      endsAt:      body.endsAt,
     }
 
     // ===========================
@@ -64,29 +56,29 @@ export async function POST(req: NextRequest) {
       const holdAmount = Math.round(body.amount * 0.80 * 100) // 80% en centimes
 
       const customer = await stripe.customers.create({
-        name: body.clientName,
+        name:  body.clientName,
         email: body.clientEmail,
       })
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: holdAmount,
+        amount:   holdAmount,
         currency: 'eur',
         customer: customer.id,
         capture_method: 'manual',
         automatic_payment_methods: { enabled: true },
         metadata: {
           ...baseMeta,
-          type: 'reservation_hold',
-          fullPrice: String(body.amount),
-          penalty30: String(Math.round(body.amount * 0.30 * 100)),
-          penalty80: String(holdAmount),
+          type:       'reservation_hold',
+          fullPrice:  String(body.amount),
+          penalty30:  String(Math.round(body.amount * 0.30 * 100)),
+          penalty80:  String(holdAmount),
         },
       })
 
       return NextResponse.json({
-        clientSecret: paymentIntent.client_secret ?? '',
+        clientSecret:    paymentIntent.client_secret ?? '',
         paymentIntentId: paymentIntent.id,
-        paymentType: 'stripe',
+        paymentType:     'stripe',
       })
     }
 
@@ -95,21 +87,21 @@ export async function POST(req: NextRequest) {
     // ===========================
     if (body.paymentMethod === 'direct') {
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(body.amount * 100),
+        amount:   Math.round(body.amount * 100),
         currency: 'eur',
         automatic_payment_methods: { enabled: true },
         receipt_email: body.clientEmail,
         metadata: {
           ...baseMeta,
-          type: 'reservation_payment',
+          type:      'reservation_payment',
           fullPrice: String(body.amount),
         },
       })
 
       return NextResponse.json({
-        clientSecret: paymentIntent.client_secret ?? '',
+        clientSecret:    paymentIntent.client_secret ?? '',
         paymentIntentId: paymentIntent.id,
-        paymentType: 'stripe',
+        paymentType:     'stripe',
       })
     }
 
@@ -133,54 +125,54 @@ export async function POST(req: NextRequest) {
         return errorJson('Code bon cadeau invalide')
       }
 
-      // Vérifier que le bon n'est pas déjà utilisé
-      if (card.used) {
+      if ((card as { used: boolean }).used) {
         return errorJson('Ce bon cadeau a déjà été utilisé')
       }
 
-      // Vérifier l'expiration
-      if (new Date(card.expires_at) < new Date()) {
+      if (new Date((card as { expires_at: string }).expires_at) < new Date()) {
         return errorJson('Ce bon cadeau a expiré')
       }
 
-      // Vérifier la correspondance du service (si le bon est lié à un service)
-      if (card.service_id && card.service_id !== body.serviceId) {
+      if (
+        (card as { service_id: string | null }).service_id &&
+        (card as { service_id: string }).service_id !== body.serviceId
+      ) {
         return errorJson('Ce bon cadeau n\'est pas valable pour cette prestation')
       }
 
-      const cardAmount = Number(card.amount)
+      const cardAmount = Number((card as { amount: number }).amount)
 
       // Cas 1 : le bon couvre tout
       if (cardAmount >= body.amount) {
         return NextResponse.json({
-          paymentType: 'gift_card_full',
+          paymentType:  'gift_card_full',
           giftCardValid: true,
         })
       }
 
-      // Cas 2 : le bon ne couvre pas tout → paiement partiel par CB
+      // Cas 2 : paiement partiel par CB
       const remaining = body.amount - cardAmount
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(remaining * 100),
+        amount:   Math.round(remaining * 100),
         currency: 'eur',
         automatic_payment_methods: { enabled: true },
         receipt_email: body.clientEmail,
         metadata: {
           ...baseMeta,
-          type: 'reservation_payment_partial',
-          giftCardCode: body.giftCardCode,
-          giftCardAmount: String(cardAmount),
-          fullPrice: String(body.amount),
+          type:            'reservation_payment_partial',
+          giftCardCode:    body.giftCardCode,
+          giftCardAmount:  String(cardAmount),
+          fullPrice:       String(body.amount),
           remainingAmount: String(remaining),
         },
       })
 
       return NextResponse.json({
-        clientSecret: paymentIntent.client_secret ?? '',
+        clientSecret:    paymentIntent.client_secret ?? '',
         paymentIntentId: paymentIntent.id,
-        paymentType: 'gift_card_partial',
+        paymentType:     'gift_card_partial',
         remainingAmount: remaining,
-        giftCardValid: true,
+        giftCardValid:   true,
       })
     }
 

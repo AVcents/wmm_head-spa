@@ -305,7 +305,7 @@ export default function PlanningPage() {
   const [templates, setTemplates] = useState<ScheduleTemplate[]>([])
   const [activeTemplateId, setActiveTemplateId] = useState('')
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; msg: string } | null>(null)
-  const [syncing, setSyncing] = useState(false)
+
   const [saving, setSaving] = useState(false)
 
   // Navigation semaines
@@ -433,21 +433,6 @@ export default function PlanningPage() {
     setTimeout(() => setToast(null), 4500)
   }
 
-  // Sync Hapio manuelle
-  async function handleSync() {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/admin/hapio', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sync-schedule' }),
-      })
-      const data = await res.json()
-      if (data.success) showToast('success', `Hapio sync OK — ${data.schedules ?? '?'} plages, ${data.apiCalls ?? '?'} appels API`)
-      else showToast('error', data.error ?? 'Erreur de synchronisation')
-    } catch { showToast('error', 'Erreur réseau') }
-    finally { setSyncing(false) }
-  }
-
   // Sauvegarde
   async function handleSave() {
     setSaving(true)
@@ -459,7 +444,7 @@ export default function PlanningPage() {
         if (data.success) {
           setOverrides(prev => prev.filter(o => o.week_start !== currentWeek.monday))
           setIsDirty(false)
-          showToast('success', 'Semaine réinitialisée — pensez à synchroniser Hapio')
+          showToast('success', 'Semaine réinitialisée — planning mis à jour')
         } else showToast('error', data.error ?? 'Erreur')
       } else {
         // Créer/modifier un override
@@ -479,7 +464,7 @@ export default function PlanningPage() {
         if (data.success) {
           await load()  // recharger les overrides pour refléter la sauvegarde
           setIsDirty(false)
-          showToast('success', 'Planning enregistré — pensez à synchroniser Hapio')
+          showToast('success', 'Planning enregistré — planning mis à jour')
         } else showToast('error', data.error ?? 'Erreur')
       }
     } catch { showToast('error', 'Erreur réseau') }
@@ -517,13 +502,6 @@ export default function PlanningPage() {
           <Link href="/admin/horaires" className="text-sm text-stone-400 hover:text-stone-600 hidden sm:block">
             Templates
           </Link>
-          <button
-            onClick={handleSync} disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-stone-200 rounded-lg text-stone-600 hover:bg-stone-50 disabled:opacity-50 transition"
-          >
-            {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            Sync Hapio
-          </button>
         </div>
       </div>
 

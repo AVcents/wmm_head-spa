@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Calendar,
 } from 'lucide-react'
+import type { BookingRow } from '@/lib/supabase/types'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,20 +32,6 @@ interface LocalService {
   }>
 }
 
-interface HapioServiceInfo {
-  id: string
-  name: string
-}
-
-interface HapioBooking {
-  id: string
-  service_id: string
-  starts_at: string
-  ends_at: string
-  status: string
-  metadata?: Record<string, string>
-}
-
 interface ExtraOption {
   id: string
   name: string
@@ -53,12 +40,12 @@ interface ExtraOption {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const HOUR_START = 8
-const HOUR_END = 20
+const HOUR_START  = 8
+const HOUR_END    = 20
 const SLOT_MINUTES = 30
-const SLOT_HEIGHT = 52 // px per slot (30 min)
-const TOTAL_SLOTS = ((HOUR_END - HOUR_START) * 60) / SLOT_MINUTES
-const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const SLOT_HEIGHT  = 52 // px per slot (30 min)
+const TOTAL_SLOTS  = ((HOUR_END - HOUR_START) * 60) / SLOT_MINUTES
+const DAY_LABELS   = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,19 +75,14 @@ function slotToTime(slotIndex: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-function minutesFromDayStart(isoString: string): number {
-  const d = new Date(isoString)
-  return d.getHours() * 60 + d.getMinutes() - HOUR_START * 60
-}
-
 function bookingTopPx(starts_at: string): number {
-  return (minutesFromDayStart(starts_at) / SLOT_MINUTES) * SLOT_HEIGHT
+  const d = new Date(starts_at)
+  const minutesFromStart = d.getHours() * 60 + d.getMinutes() - HOUR_START * 60
+  return (minutesFromStart / SLOT_MINUTES) * SLOT_HEIGHT
 }
 
 function bookingHeightPx(starts_at: string, ends_at: string): number {
-  const start = new Date(starts_at)
-  const end = new Date(ends_at)
-  const minutes = (end.getTime() - start.getTime()) / 60000
+  const minutes = (new Date(ends_at).getTime() - new Date(starts_at).getTime()) / 60000
   return Math.max((minutes / SLOT_MINUTES) * SLOT_HEIGHT, SLOT_HEIGHT)
 }
 
@@ -115,29 +97,26 @@ export default function AdminAgendaPage() {
   const [weekStart, setWeekStart] = useState<Date>(() => getMondayOf(new Date()))
 
   // Data
-  const [bookings, setBookings] = useState<HapioBooking[]>([])
+  const [bookings, setBookings]         = useState<BookingRow[]>([])
   const [localServices, setLocalServices] = useState<LocalService[]>([])
-  const [hapioServices, setHapioServices] = useState<HapioServiceInfo[]>([])
-  const [locationId, setLocationId] = useState<string>('')
-  const [resourceId, setResourceId] = useState<string>('')
 
   // UI state
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]               = useState(true)
   const [loadingBookings, setLoadingBookings] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [error, setError]                   = useState<string | null>(null)
+  const [toast, setToast]                   = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   // Modal
-  const [modal, setModal] = useState<{ date: string; time: string } | null>(null)
-  const [modalServiceId, setModalServiceId] = useState('')
-  const [modalVariantId, setModalVariantId] = useState('')
-  const [modalExtraIds, setModalExtraIds] = useState<string[]>([])
-  const [modalExtras, setModalExtras] = useState<ExtraOption[]>([])
-  const [modalClientName, setModalClientName] = useState('')
+  const [modal, setModal]                       = useState<{ date: string; time: string } | null>(null)
+  const [modalServiceId, setModalServiceId]     = useState('')
+  const [modalVariantId, setModalVariantId]     = useState('')
+  const [modalExtraIds, setModalExtraIds]       = useState<string[]>([])
+  const [modalExtras, setModalExtras]           = useState<ExtraOption[]>([])
+  const [modalClientName, setModalClientName]   = useState('')
   const [modalClientEmail, setModalClientEmail] = useState('')
   const [modalClientPhone, setModalClientPhone] = useState('')
   const [modalClientMessage, setModalClientMessage] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting]             = useState(false)
 
   // Derived
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
@@ -152,26 +131,10 @@ export default function AdminAgendaPage() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const [locRes, svcRes] = await Promise.all([
-          fetch('/api/booking?action=locations'),
-          fetch('/api/services'),
-        ])
-        if (!locRes.ok || !svcRes.ok) throw new Error('Erreur de chargement')
-        const [locations, services] = await Promise.all([locRes.json(), svcRes.json()])
-
-        const loc = locations[0]
-        if (!loc) throw new Error('Aucune location Hapio configurée. Allez dans Hapio Setup.')
-
-        setLocationId(loc.id)
+        const res = await fetch('/api/services')
+        if (!res.ok) throw new Error('Erreur de chargement des services')
+        const services: LocalService[] = await res.json()
         setLocalServices(services)
-
-        const [hapSvcRes, resRes] = await Promise.all([
-          fetch(`/api/booking?action=services&locationId=${loc.id}`),
-          fetch(`/api/booking?action=resources&locationId=${loc.id}`),
-        ])
-        const [hapSvcs, resources] = await Promise.all([hapSvcRes.json(), resRes.json()])
-        setHapioServices(hapSvcs)
-        if (resources[0]) setResourceId(resources[0].id)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur de configuration')
       } finally {
@@ -187,11 +150,11 @@ export default function AdminAgendaPage() {
     setLoadingBookings(true)
     try {
       const from = formatDate(start)
-      const to = formatDate(addDays(start, 6))
-      const res = await fetch(`/api/admin/hapio?action=bookings&from=${from}&to=${to}`)
+      const to   = formatDate(addDays(start, 6))
+      const res  = await fetch(`/api/admin/bookings?from=${from}&to=${to}`)
       if (!res.ok) throw new Error()
-      const data: HapioBooking[] = await res.json()
-      setBookings(data.filter((b) => b.status !== 'canceled'))
+      const data: BookingRow[] = await res.json()
+      setBookings(data.filter((b) => b.status === 'confirmed'))
     } catch {
       // silencieux — on garde les anciennes données
     } finally {
@@ -237,43 +200,33 @@ export default function AdminAgendaPage() {
   const closeModal = () => setModal(null)
 
   const selectedLocalService = localServices.find((s) => s.id === modalServiceId)
-  const selectedVariant = selectedLocalService?.service_variants.find((v) => v.id === modalVariantId)
-  const duration = selectedVariant?.duration ?? selectedLocalService?.duration ?? 60
-  const price = selectedVariant?.price ?? selectedLocalService?.price ?? 0
-
-  const hapioServiceId = useMemo(() => {
-    if (!selectedLocalService) return ''
-    return (
-      hapioServices.find((hs) => hs.name === selectedLocalService.name)?.id ??
-      hapioServices.find((hs) => hs.name.toLowerCase().includes(selectedLocalService.name.toLowerCase()))?.id ??
-      ''
-    )
-  }, [selectedLocalService, hapioServices])
+  const selectedVariant       = selectedLocalService?.service_variants.find((v) => v.id === modalVariantId)
+  const duration              = selectedVariant?.duration ?? selectedLocalService?.duration ?? 60
+  const price                 = selectedVariant?.price ?? selectedLocalService?.price ?? 0
 
   // ── Create booking ─────────────────────────────────────────────────────────
 
   const handleCreateBooking = async () => {
-    if (!modal || !modalServiceId || !modalClientName || !modalClientEmail || !hapioServiceId || !locationId) return
+    if (!modal || !modalServiceId || !modalClientName || !modalClientEmail) return
     if (selectedLocalService?.has_variants && !modalVariantId) return
 
     setSubmitting(true)
     try {
       const startsAt = new Date(`${modal.date}T${modal.time}:00`)
-      const endsAt = new Date(startsAt.getTime() + duration * 60000)
+      const endsAt   = new Date(startsAt.getTime() + duration * 60000)
 
       const res = await fetch('/api/admin/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hapioServiceId,
-          hapioLocationId: locationId,
-          resourceId: resourceId || undefined,
-          startsAt: startsAt.toISOString(),
-          endsAt: endsAt.toISOString(),
-          name: modalClientName,
-          email: modalClientEmail,
-          phone: modalClientPhone || undefined,
-          message: modalClientMessage || undefined,
+          serviceId:   modalServiceId,
+          variantId:   modalVariantId || undefined,
+          startsAt:    startsAt.toISOString(),
+          endsAt:      endsAt.toISOString(),
+          name:        modalClientName,
+          email:       modalClientEmail,
+          phone:       modalClientPhone || undefined,
+          message:     modalClientMessage || undefined,
           serviceName: selectedLocalService?.name ?? '',
           variantName: selectedVariant?.hair_length_label || undefined,
           duration,
@@ -322,9 +275,9 @@ export default function AdminAgendaPage() {
   }
 
   const formatWeekLabel = () => {
-    const end = addDays(weekStart, 6)
+    const end        = addDays(weekStart, 6)
     const startLabel = weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-    const endLabel = end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+    const endLabel   = end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
     return `${startLabel} – ${endLabel}`
   }
 
@@ -408,11 +361,9 @@ export default function AdminAgendaPage() {
               }`}
             >
               <p className="text-xs text-foreground-muted font-medium">{DAY_LABELS[i]}</p>
-              <p
-                className={`text-lg font-bold mt-0.5 ${
-                  isToday(day) ? 'text-primary-600 dark:text-primary-400' : 'text-foreground'
-                }`}
-              >
+              <p className={`text-lg font-bold mt-0.5 ${
+                isToday(day) ? 'text-primary-600 dark:text-primary-400' : 'text-foreground'
+              }`}>
                 {day.getDate()}
               </p>
             </div>
@@ -441,7 +392,7 @@ export default function AdminAgendaPage() {
 
             {/* Day columns */}
             {weekDays.map((day, dayIdx) => {
-              const dateStr = formatDate(day)
+              const dateStr    = formatDate(day)
               const dayBookings = bookingsForDay(day)
 
               return (
@@ -453,9 +404,9 @@ export default function AdminAgendaPage() {
                 >
                   {/* Clickable slot rows */}
                   {Array.from({ length: TOTAL_SLOTS }, (_, slotIdx) => {
-                    const time = slotToTime(slotIdx)
+                    const time         = slotToTime(slotIdx)
                     const slotDateTime = new Date(`${dateStr}T${time}:00`)
-                    const isPast = slotDateTime < new Date()
+                    const isPast       = slotDateTime < new Date()
                     const isHourBorder = slotIdx % 2 === 0
 
                     return (
@@ -469,9 +420,7 @@ export default function AdminAgendaPage() {
                             : 'hover:bg-primary-50/40 dark:hover:bg-primary-900/10 cursor-pointer'
                         }`}
                         style={{ height: `${SLOT_HEIGHT}px` }}
-                        onClick={() => {
-                          if (!isPast) openModal(dateStr, time)
-                        }}
+                        onClick={() => { if (!isPast) openModal(dateStr, time) }}
                         title={isPast ? '' : `Réserver le ${day.toLocaleDateString('fr-FR')} à ${time}`}
                       />
                     )
@@ -479,13 +428,9 @@ export default function AdminAgendaPage() {
 
                   {/* Booking blocks — absolutely positioned */}
                   {dayBookings.map((booking) => {
-                    const top = bookingTopPx(booking.starts_at)
+                    const top    = bookingTopPx(booking.starts_at)
                     const height = bookingHeightPx(booking.starts_at, booking.ends_at)
-                    const clientName = booking.metadata?.['name'] ?? 'Client'
-                    const serviceName = booking.metadata?.['service_name'] ?? 'Soin'
-                    const startTime = formatTime(booking.starts_at)
 
-                    // Hide bookings outside visible range
                     if (top < 0 || top > TOTAL_SLOTS * SLOT_HEIGHT) return null
 
                     return (
@@ -494,10 +439,10 @@ export default function AdminAgendaPage() {
                         className="absolute left-0.5 right-0.5 rounded-lg bg-primary-500 text-white px-2 py-1.5 overflow-hidden shadow-sm group cursor-default z-10"
                         style={{ top: `${top}px`, height: `${height - 2}px` }}
                       >
-                        <p className="text-xs font-bold leading-tight">{startTime}</p>
-                        <p className="text-xs truncate font-medium leading-tight mt-0.5">{clientName}</p>
+                        <p className="text-xs font-bold leading-tight">{formatTime(booking.starts_at)}</p>
+                        <p className="text-xs truncate font-medium leading-tight mt-0.5">{booking.client_name}</p>
                         {height > SLOT_HEIGHT && (
-                          <p className="text-xs truncate opacity-80 leading-tight">{serviceName}</p>
+                          <p className="text-xs truncate opacity-80 leading-tight">{booking.service_name}</p>
                         )}
                         {/* Cancel button on hover */}
                         <button
@@ -544,17 +489,11 @@ export default function AdminAgendaPage() {
                 </h3>
                 <p className="text-sm text-foreground-secondary mt-0.5">
                   {new Date(`${modal.date}T${modal.time}`).toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}{' '}
-                  à {modal.time}
+                    weekday: 'long', day: 'numeric', month: 'long',
+                  })}{' '}à {modal.time}
                 </p>
               </div>
-              <button
-                onClick={closeModal}
-                className="p-2 rounded-xl hover:bg-background transition-colors"
-              >
+              <button onClick={closeModal} className="p-2 rounded-xl hover:bg-background transition-colors">
                 <X className="h-5 w-5 text-foreground-muted" />
               </button>
             </div>
@@ -567,19 +506,14 @@ export default function AdminAgendaPage() {
                 </label>
                 <select
                   value={modalServiceId}
-                  onChange={(e) => {
-                    setModalServiceId(e.target.value)
-                    setModalVariantId('')
-                  }}
+                  onChange={(e) => { setModalServiceId(e.target.value); setModalVariantId('') }}
                   className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Choisir une prestation…</option>
                   {localServices
                     .filter((s) => s.is_active)
                     .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                 </select>
               </div>
@@ -609,27 +543,14 @@ export default function AdminAgendaPage() {
               {selectedLocalService && (
                 <div className="px-4 py-3 rounded-xl bg-background border border-border text-sm flex items-center gap-4 flex-wrap">
                   <span className="text-foreground-secondary">⏱ {duration} min</span>
-                  <span className="text-foreground-secondary">
-                    💰 {price}€
-                  </span>
-                  {hapioServiceId ? (
-                    <span className="text-green-600 dark:text-green-400 text-xs font-medium">
-                      ✓ Hapio configuré
-                    </span>
-                  ) : (
-                    <span className="text-error text-xs font-medium">
-                      ⚠ Non lié à Hapio — vérifiez la config
-                    </span>
-                  )}
+                  <span className="text-foreground-secondary">💰 {price}€</span>
                 </div>
               )}
 
               {/* Extras */}
               {modalExtras.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Extras
-                  </label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Extras</label>
                   <div className="space-y-2">
                     {modalExtras.map((extra) => (
                       <label
@@ -649,9 +570,7 @@ export default function AdminAgendaPage() {
                           className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
                         />
                         <span className="flex-1 text-sm text-foreground">{extra.name}</span>
-                        <span className="text-sm font-bold text-primary-600">
-                          +{Number(extra.price).toFixed(2)}€
-                        </span>
+                        <span className="text-sm font-bold text-primary-600">+{Number(extra.price).toFixed(2)}€</span>
                       </label>
                     ))}
                   </div>
@@ -663,9 +582,7 @@ export default function AdminAgendaPage() {
                 <p className="text-sm font-semibold text-foreground mb-4">Informations client</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-foreground-muted mb-1">
-                      Nom complet *
-                    </label>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Nom complet *</label>
                     <input
                       type="text"
                       value={modalClientName}
@@ -675,9 +592,7 @@ export default function AdminAgendaPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground-muted mb-1">
-                      Email *
-                    </label>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Email *</label>
                     <input
                       type="email"
                       value={modalClientEmail}
@@ -687,9 +602,7 @@ export default function AdminAgendaPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-foreground-muted mb-1">
-                      Téléphone
-                    </label>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Téléphone</label>
                     <input
                       type="tel"
                       value={modalClientPhone}
@@ -699,9 +612,7 @@ export default function AdminAgendaPage() {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-foreground-muted mb-1">
-                      Note interne (optionnel)
-                    </label>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Note interne (optionnel)</label>
                     <textarea
                       value={modalClientMessage}
                       onChange={(e) => setModalClientMessage(e.target.value)}
@@ -730,21 +641,14 @@ export default function AdminAgendaPage() {
                     !modalServiceId ||
                     !modalClientName ||
                     !modalClientEmail ||
-                    !hapioServiceId ||
                     (selectedLocalService?.has_variants === true && !modalVariantId)
                   }
                   className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Création…
-                    </>
+                    <><Loader2 className="h-4 w-4 animate-spin" />Création…</>
                   ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      Créer la réservation
-                    </>
+                    <><Plus className="h-4 w-4" />Créer la réservation</>
                   )}
                 </button>
               </div>
@@ -755,18 +659,12 @@ export default function AdminAgendaPage() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg border ${
-            toast.type === 'success'
-              ? 'bg-success/10 border-success/20 text-success'
-              : 'bg-error/10 border-error/20 text-error'
-          }`}
-        >
-          {toast.type === 'success' ? (
-            <Check className="h-5 w-5" />
-          ) : (
-            <AlertCircle className="h-5 w-5" />
-          )}
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg border ${
+          toast.type === 'success'
+            ? 'bg-success/10 border-success/20 text-success'
+            : 'bg-error/10 border-error/20 text-error'
+        }`}>
+          {toast.type === 'success' ? <Check className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
           <span className="font-medium">{toast.msg}</span>
         </div>
       )}

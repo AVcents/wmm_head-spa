@@ -24,11 +24,7 @@ export interface BookingState {
   slot: {
     startsAt: string
     endsAt: string
-    resourceId?: string
   } | null
-  // IDs réels Hapio (UUID) résolus lors de l'étape créneaux
-  hapioServiceId: string | null
-  hapioLocationId: string | null
   clientInfo: {
     name: string
     email: string
@@ -45,12 +41,12 @@ export interface BookingState {
 }
 
 const STEPS = [
-  { id: 'service', label: 'Prestation', icon: Sparkles },
-  { id: 'extras', label: 'Options', icon: Gift },
-  { id: 'date', label: 'Date', icon: Calendar },
-  { id: 'slot', label: 'Créneau', icon: Clock },
-  { id: 'info', label: 'Coordonnées', icon: User },
-  { id: 'payment', label: 'Paiement', icon: CreditCard },
+  { id: 'service', label: 'Prestation',  icon: Sparkles },
+  { id: 'extras',  label: 'Options',     icon: Gift },
+  { id: 'date',    label: 'Date',        icon: Calendar },
+  { id: 'slot',    label: 'Créneau',     icon: Clock },
+  { id: 'info',    label: 'Coordonnées', icon: User },
+  { id: 'payment', label: 'Paiement',    icon: CreditCard },
 ] as const
 
 type StepId = (typeof STEPS)[number]['id'] | 'confirmation'
@@ -66,7 +62,6 @@ export default function ReservationContent({
   preselectedServiceId,
   preselectedVariantId,
 }: Props) {
-  // Pré-sélection si on vient d'une carte prestation
   const initialService = preselectedServiceId
     ? services.find((s) => s.id === preselectedServiceId) ?? null
     : null
@@ -75,30 +70,25 @@ export default function ReservationContent({
 
   const [currentStep, setCurrentStep] = useState<StepId>(initialStep)
   const [booking, setBooking] = useState<BookingState>({
-    service: initialService,
-    variantId: initialVariant,
-    date: null,
-    slot: null,
-    hapioServiceId: null,
-    hapioLocationId: null,
-    clientInfo: null,
-    selectedExtras: [],
-    bookingId: null,
-    paymentMode: null,
+    service:         initialService,
+    variantId:       initialVariant,
+    date:            null,
+    slot:            null,
+    clientInfo:      null,
+    selectedExtras:  [],
+    bookingId:       null,
+    paymentMode:     null,
     paymentIntentId: null,
-    amountPaid: null,
+    amountPaid:      null,
   })
 
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep)
-
   const goTo = (step: StepId) => setCurrentStep(step)
-
   const goBack = () => {
     const idx = STEPS.findIndex((s) => s.id === currentStep)
-    const prevStep = STEPS[idx - 1]
-    if (idx > 0 && prevStep) setCurrentStep(prevStep.id)
+    const prev = STEPS[idx - 1]
+    if (idx > 0 && prev) setCurrentStep(prev.id)
   }
-
   const updateBooking = (updates: Partial<BookingState>) => {
     setBooking((prev) => ({ ...prev, ...updates }))
   }
@@ -128,48 +118,30 @@ export default function ReservationContent({
               <div className="flex items-center justify-between max-w-xl mx-auto">
                 {STEPS.map((step, i) => {
                   const isActive = step.id === currentStep
-                  const isDone = i < stepIndex
-                  const Icon = step.icon
-
+                  const isDone   = i < stepIndex
+                  const Icon     = step.icon
                   return (
                     <div key={step.id} className="flex items-center">
                       <div className="flex flex-col items-center">
-                        <div
-                          className={`
-                            flex items-center justify-center h-10 w-10 rounded-full
-                            transition-all duration-300
-                            ${isDone
-                              ? 'bg-primary-600 text-white'
-                              : isActive
-                                ? 'bg-primary-600 text-white ring-4 ring-primary-200 dark:ring-primary-900/40'
-                                : 'bg-surface border-2 border-border text-foreground-muted'
-                            }
-                          `}
-                        >
-                          {isDone ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Icon className="h-4 w-4" />
-                          )}
+                        <div className={`flex items-center justify-center h-10 w-10 rounded-full transition-all duration-300 ${
+                          isDone
+                            ? 'bg-primary-600 text-white'
+                            : isActive
+                              ? 'bg-primary-600 text-white ring-4 ring-primary-200 dark:ring-primary-900/40'
+                              : 'bg-surface border-2 border-border text-foreground-muted'
+                        }`}>
+                          {isDone ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                         </div>
-                        <span
-                          className={`mt-2 text-xs font-medium hidden sm:block ${
-                            isActive || isDone
-                              ? 'text-primary-600 dark:text-primary-400'
-                              : 'text-foreground-muted'
-                          }`}
-                        >
+                        <span className={`mt-2 text-xs font-medium hidden sm:block ${
+                          isActive || isDone ? 'text-primary-600 dark:text-primary-400' : 'text-foreground-muted'
+                        }`}>
                           {step.label}
                         </span>
                       </div>
                       {i < STEPS.length - 1 && (
-                        <div
-                          className={`h-0.5 w-5 sm:w-10 mx-1 mt-[-20px] rounded-full transition-colors duration-300 ${
-                            i < stepIndex
-                              ? 'bg-primary-600'
-                              : 'bg-border'
-                          }`}
-                        />
+                        <div className={`h-0.5 w-5 sm:w-10 mx-1 mt-[-20px] rounded-full transition-colors duration-300 ${
+                          i < stepIndex ? 'bg-primary-600' : 'bg-border'
+                        }`} />
                       )}
                     </div>
                   )
@@ -178,7 +150,7 @@ export default function ReservationContent({
             </div>
           )}
 
-          {/* Bouton retour (masqué sur service, confirmation, payment et extras car géré dans ces composants) */}
+          {/* Bouton retour */}
           {currentStep !== 'service' && currentStep !== 'confirmation' && currentStep !== 'payment' && currentStep !== 'extras' && (
             <button
               onClick={goBack}
@@ -237,8 +209,8 @@ export default function ReservationContent({
                   service={booking.service}
                   variantId={booking.variantId}
                   date={booking.date}
-                  onSelect={(slot, hapioServiceId, hapioLocationId) => {
-                    updateBooking({ slot, hapioServiceId, hapioLocationId })
+                  onSelect={(slot) => {
+                    updateBooking({ slot })
                     goTo('info')
                   }}
                 />

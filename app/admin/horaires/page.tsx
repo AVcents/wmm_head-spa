@@ -138,7 +138,7 @@ export default function AdminHorairesPage() {
   const [activeTemplateId, setActiveTemplateId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
-  const [syncing, setSyncing] = useState(false)
+
   const [toast, setToast] = useState<{
     message: string
     type: 'success' | 'error' | 'warning'
@@ -217,44 +217,11 @@ export default function AdminHorairesPage() {
 
       setActiveTemplateId(confirmTemplate)
 
-      if (data.hapioSync === false) {
-        showToast(
-          `Horaires mis à jour. ⚠️ Sync Hapio échoué : ${data.hapioError ?? 'erreur inconnue'}`,
-          'warning'
-        )
-      } else {
-        showToast(
-          `Horaires activés et synchronisés (${data.created ?? 0} créneaux créés)`,
-          'success'
-        )
-      }
+      showToast('Horaires activés avec succès', 'success')
     } catch {
       showToast('Erreur de connexion', 'error')
     } finally {
       setUpdating(null)
-    }
-  }
-
-  // -------- Manual Hapio sync --------
-
-  const handleManualSync = async () => {
-    setSyncing(true)
-    try {
-      const res = await fetch('/api/admin/hapio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sync-schedule' }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        showToast(`Hapio synchronisé (${data.created} créneaux)`, 'success')
-      } else {
-        showToast(data.error ?? 'Erreur sync Hapio', 'error')
-      }
-    } catch {
-      showToast('Erreur de connexion', 'error')
-    } finally {
-      setSyncing(false)
     }
   }
 
@@ -407,15 +374,6 @@ export default function AdminHorairesPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            title="Resynchroniser Hapio manuellement"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-foreground-secondary hover:text-foreground hover:border-primary-300 transition-all text-sm font-medium disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Sync...' : 'Sync Hapio'}
-          </button>
           <button
             onClick={openCreateModal}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors text-sm font-medium"

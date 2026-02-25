@@ -75,6 +75,7 @@ export function CustomSelect({
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-controls="custom-select-listbox"
         onClick={() => setOpen(!open)}
         onKeyDown={handleKeyDown}
         className={`
@@ -102,6 +103,7 @@ export function CustomSelect({
       {/* Dropdown */}
       {open && (
         <div
+          id="custom-select-listbox"
           role="listbox"
           className="
             absolute z-50 mt-1.5 w-full

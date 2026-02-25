@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   Loader2,
   AlertTriangle,
   CheckCircle2,
@@ -389,7 +388,7 @@ export default function PlanningPage() {
     const override = overrideMap.get(currentWeek.monday)
     initFromOverride(override, currentWeek)
     setIsDirty(false)
-  }, [weekIdx, loading, overrideMap, initFromOverride])
+  }, [weekIdx, loading, overrideMap, currentWeek, initFromOverride])
 
   // Changement de mode
   function handleModeChange(mode: EditMode) {

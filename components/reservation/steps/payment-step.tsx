@@ -167,7 +167,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
   >('idle')
   const [giftCardError, setGiftCardError] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [_paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
   const [remainingAmount, setRemainingAmount] = useState<number | null>(null)
   const [loadingIntent, setLoadingIntent] = useState(false)
   const [confirmingBooking, setConfirmingBooking] = useState(false)

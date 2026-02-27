@@ -158,20 +158,20 @@ function SlotInput({ slot, onUpdate, onRemove, canRemove }: {
       <select
         value={slot.from}
         onChange={e => onUpdate({ ...slot, from: e.target.value })}
-        className="border border-stone-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-[#8B6E4E] min-w-0"
+        className="border border-border rounded-lg px-2 py-1.5 text-sm bg-surface text-foreground focus:outline-none focus:border-primary-500 min-w-0"
       >
         {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
-      <span className="text-stone-400 text-sm shrink-0">—</span>
+      <span className="text-foreground-muted text-sm shrink-0">—</span>
       <select
         value={slot.to}
         onChange={e => onUpdate({ ...slot, to: e.target.value })}
-        className="border border-stone-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-[#8B6E4E] min-w-0"
+        className="border border-border rounded-lg px-2 py-1.5 text-sm bg-surface text-foreground focus:outline-none focus:border-primary-500 min-w-0"
       >
         {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
       {canRemove && (
-        <button onClick={onRemove} className="text-stone-300 hover:text-red-400 transition shrink-0">
+        <button onClick={onRemove} className="text-foreground-muted hover:text-error transition shrink-0">
           <X className="w-3.5 h-3.5" />
         </button>
       )}
@@ -222,27 +222,27 @@ function DayRow({ day, editable, onChange }: {
 
   return (
     <div className={`flex items-start gap-4 px-4 py-3 rounded-xl border transition ${
-      isToday ? 'border-amber-200 bg-amber-50/50' : 'border-stone-100 bg-white hover:bg-stone-50/50'
+      isToday ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20' : 'border-border bg-surface hover:bg-background/50'
     }`}>
       {/* Jour + date */}
       <div className="w-28 shrink-0 pt-0.5">
-        <div className={`text-sm font-semibold ${isToday ? 'text-amber-700' : 'text-stone-700'}`}>
+        <div className={`text-sm font-semibold ${isToday ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}`}>
           {day.dayName}
         </div>
-        <div className="text-xs text-stone-400">{formatDayDate(day.date)}</div>
+        <div className="text-xs text-foreground-muted">{formatDayDate(day.date)}</div>
       </div>
 
       {/* Créneaux */}
       <div className="flex-1 min-w-0">
         {day.closed ? (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 text-stone-500 text-sm">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foreground-muted/10 text-foreground-muted text-sm">
               <Ban className="w-3.5 h-3.5" /> Fermé
             </span>
             {editable && (
               <button
                 onClick={() => onChange?.({ ...day, closed: false })}
-                className="text-xs text-[#8B6E4E] hover:underline"
+                className="text-xs text-primary-600 dark:text-primary-400 hover:underline"
               >
                 Ouvrir
               </button>
@@ -263,7 +263,7 @@ function DayRow({ day, editable, onChange }: {
                 ))}
                 <button
                   onClick={addPause}
-                  className="flex items-center gap-1 text-xs text-[#8B6E4E] hover:underline mt-0.5 w-fit"
+                  className="flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:underline mt-0.5 w-fit"
                 >
                   <Plus className="w-3 h-3" /> Ajouter une pause
                 </button>
@@ -271,7 +271,7 @@ function DayRow({ day, editable, onChange }: {
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {day.slots.map((slot, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8B6E4E]/10 text-[#8B6E4E] text-sm font-medium">
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 text-sm font-medium">
                     <Clock className="w-3 h-3" />
                     {slot.from} – {slot.to}
                   </span>
@@ -286,7 +286,7 @@ function DayRow({ day, editable, onChange }: {
       {editable && !day.closed && (
         <button
           onClick={() => onChange?.({ ...day, closed: true })}
-          className="shrink-0 text-stone-300 hover:text-stone-500 transition mt-0.5"
+          className="shrink-0 text-foreground-muted hover:text-foreground transition mt-0.5"
           title="Marquer comme fermé"
         >
           <Ban className="w-4 h-4" />
@@ -479,7 +479,7 @@ export default function PlanningPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8B6E4E]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600 dark:text-primary-400" />
       </div>
     )
   }
@@ -494,36 +494,36 @@ export default function PlanningPage() {
       {/* ── En-tête ── */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <CalendarDays className="w-6 h-6 text-[#8B6E4E]" />
-          <h1 className="text-2xl font-semibold text-stone-800">Planning</h1>
+          <CalendarDays className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+          <h1 className="text-2xl font-semibold text-foreground">Planning</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/admin/horaires" className="text-sm text-stone-400 hover:text-stone-600 hidden sm:block">
+          <Link href="/admin/horaires" className="text-sm text-foreground-muted hover:text-foreground hidden sm:block">
             Templates
           </Link>
         </div>
       </div>
 
       {/* ── Navigation semaine (slider) ── */}
-      <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
 
         {/* Header navigation */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">
           <button
             onClick={goToPrev} disabled={weekIdx === 0}
-            className="p-2 rounded-xl hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="p-2 rounded-xl hover:bg-background/50 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            <ChevronLeft className="w-5 h-5 text-stone-600" />
+            <ChevronLeft className="w-5 h-5 text-foreground" />
           </button>
 
           <div className="text-center">
             <div className="flex items-center gap-2 justify-center">
-              <span className="font-semibold text-stone-800">{formatWeekTitle(currentWeek)}</span>
+              <span className="font-semibold text-foreground">{formatWeekTitle(currentWeek)}</span>
               {currentOverride && (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  currentOverride.type === 'closed' ? 'bg-red-100 text-red-600' :
-                  currentOverride.type === 'template' ? 'bg-indigo-100 text-indigo-600' :
-                  'bg-violet-100 text-violet-600'
+                  currentOverride.type === 'closed' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                  currentOverride.type === 'template' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' :
+                  'bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'
                 }`}>
                   {currentOverride.label ?? (
                     currentOverride.type === 'closed' ? 'Fermé' :
@@ -532,21 +532,21 @@ export default function PlanningPage() {
                 </span>
               )}
             </div>
-            <div className="text-xs text-stone-400 mt-0.5">
+            <div className="text-xs text-foreground-muted mt-0.5">
               Semaine {weekIdx + 1} / {weeks.length}
             </div>
           </div>
 
           <button
             onClick={goToNext} disabled={weekIdx === weeks.length - 1}
-            className="p-2 rounded-xl hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="p-2 rounded-xl hover:bg-background/50 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            <ChevronRight className="w-5 h-5 text-stone-600" />
+            <ChevronRight className="w-5 h-5 text-foreground" />
           </button>
         </div>
 
         {/* ── Sélection du mode ── */}
-        <div className="px-5 pt-4 pb-3 flex flex-wrap gap-2 border-b border-stone-100">
+        <div className="px-5 pt-4 pb-3 flex flex-wrap gap-2 border-b border-border/50">
           {([
             { value: 'default', icon: <Clock className="w-3.5 h-3.5" />, label: activeTemplateName },
             { value: 'template', icon: <Shuffle className="w-3.5 h-3.5" />, label: 'Autre template' },
@@ -558,8 +558,8 @@ export default function PlanningPage() {
               onClick={() => handleModeChange(opt.value)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition ${
                 editMode === opt.value
-                  ? 'bg-[#8B6E4E] text-white shadow-sm'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? 'bg-primary-600 dark:bg-primary-500 text-white shadow-sm'
+                  : 'bg-background/80 dark:bg-background/50 text-foreground hover:bg-background border border-border/50'
               }`}
             >
               {opt.icon} {opt.label}
@@ -569,12 +569,12 @@ export default function PlanningPage() {
 
         {/* ── Options selon le mode ── */}
         {editMode === 'template' && (
-          <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-3">
-            <span className="text-sm text-stone-600 shrink-0">Template :</span>
+          <div className="px-5 py-3 border-b border-border/50 flex items-center gap-3">
+            <span className="text-sm text-foreground shrink-0">Template :</span>
             <select
               value={editTemplateId || activeTemplateId}
               onChange={e => handleTemplateChange(e.target.value)}
-              className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#8B6E4E]"
+              className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-surface text-foreground focus:outline-none focus:border-primary-500"
             >
               {templates.map(t => (
                 <option key={t.id} value={t.id}>
@@ -586,14 +586,14 @@ export default function PlanningPage() {
         )}
 
         {editMode !== 'default' && (
-          <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-3">
-            <span className="text-sm text-stone-600 shrink-0">Libellé :</span>
+          <div className="px-5 py-3 border-b border-border/50 flex items-center gap-3">
+            <span className="text-sm text-foreground shrink-0">Libellé :</span>
             <input
               type="text"
               placeholder="ex: Vacances d'été, Fermeture…"
               value={editLabel}
               onChange={e => { setEditLabel(e.target.value); setIsDirty(true) }}
-              className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#8B6E4E]"
+              className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-surface text-foreground placeholder:text-foreground-muted focus:outline-none focus:border-primary-500"
             />
           </div>
         )}
@@ -602,9 +602,9 @@ export default function PlanningPage() {
         <div className="px-4 py-3 space-y-2">
           {editMode === 'closed' ? (
             <div className="py-8 text-center">
-              <Ban className="w-10 h-10 text-red-300 mx-auto mb-2" />
-              <p className="text-stone-500 font-medium">Semaine fermée</p>
-              <p className="text-sm text-stone-400">Aucune réservation ne sera possible</p>
+              <Ban className="w-10 h-10 text-red-300 dark:text-red-700 mx-auto mb-2" />
+              <p className="text-foreground font-medium">Semaine fermée</p>
+              <p className="text-sm text-foreground-muted">Aucune réservation ne sera possible</p>
             </div>
           ) : (
             editDays.map((day, i) => (
@@ -619,7 +619,7 @@ export default function PlanningPage() {
         </div>
 
         {/* ── Indicateur mini-calendrier semaines ── */}
-        <div className="px-5 py-3 border-t border-stone-100">
+        <div className="px-5 py-3 border-t border-border/50">
           <div className="flex gap-1 justify-center flex-wrap">
             {weeks.map((w, i) => {
               const ov = overrideMap.get(w.monday)
@@ -630,10 +630,10 @@ export default function PlanningPage() {
                   onClick={() => setWeekIdx(i)}
                   title={formatWeekTitle(w)}
                   className={`w-5 h-5 rounded-full text-[9px] font-bold transition ${
-                    isCurrent ? 'bg-[#8B6E4E] text-white' :
-                    ov?.type === 'closed' ? 'bg-red-200 text-red-700 hover:bg-red-300' :
-                    ov ? 'bg-indigo-200 text-indigo-700 hover:bg-indigo-300' :
-                    'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                    isCurrent ? 'bg-primary-600 dark:bg-primary-500 text-white' :
+                    ov?.type === 'closed' ? 'bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-400 hover:bg-red-300 dark:hover:bg-red-900/60' :
+                    ov ? 'bg-indigo-200 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-300 dark:hover:bg-indigo-900/60' :
+                    'bg-background text-foreground-muted hover:bg-background/50'
                   }`}
                 >
                   {i + 1}
@@ -646,21 +646,21 @@ export default function PlanningPage() {
 
       {/* ── Barre de sauvegarde ── */}
       <div className={`mt-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl border transition-all ${
-        isDirty ? 'bg-white border-[#8B6E4E]/30 shadow-sm' : 'bg-transparent border-transparent'
+        isDirty ? 'bg-surface border-primary-500/30 dark:border-primary-400/30 shadow-sm' : 'bg-transparent border-transparent'
       }`}>
         {isDirty ? (
           <>
-            <p className="text-sm text-stone-500">Modifications non sauvegardées</p>
+            <p className="text-sm text-foreground-muted">Modifications non sauvegardées</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { initFromOverride(overrideMap.get(currentWeek.monday), currentWeek); setIsDirty(false) }}
-                className="px-4 py-2 text-sm border border-stone-200 rounded-xl text-stone-600 hover:bg-stone-50 transition"
+                className="px-4 py-2 text-sm border border-border rounded-xl text-foreground hover:bg-background/50 transition"
               >
                 Annuler
               </button>
               <button
                 onClick={handleSave} disabled={saving || (editMode === 'template' && !editTemplateId)}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-[#8B6E4E] text-white rounded-xl hover:bg-[#7a5e40] disabled:opacity-50 transition"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 dark:bg-primary-500 text-white rounded-xl hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50 transition"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Enregistrer
@@ -668,7 +668,7 @@ export default function PlanningPage() {
             </div>
           </>
         ) : (
-          <p className="text-sm text-stone-400 w-full text-center">
+          <p className="text-sm text-foreground-muted w-full text-center">
             {currentOverride
               ? 'Semaine avec configuration spéciale — cliquez sur un mode pour modifier'
               : `Template actif par défaut : ${activeTemplateName}`
@@ -680,9 +680,9 @@ export default function PlanningPage() {
       {/* ── Toast ── */}
       {toast && (
         <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm z-50 max-w-sm ${
-          toast.type === 'success' ? 'bg-green-600 text-white' :
-          toast.type === 'warning' ? 'bg-amber-500 text-white' :
-          'bg-red-600 text-white'
+          toast.type === 'success' ? 'bg-green-600 dark:bg-green-500 text-white' :
+          toast.type === 'warning' ? 'bg-amber-500 dark:bg-amber-600 text-white' :
+          'bg-red-600 dark:bg-red-500 text-white'
         }`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> :
            toast.type === 'warning' ? <AlertTriangle className="w-4 h-4 shrink-0" /> :

@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Image from 'next/image'
+import { ThemeToggle } from '@/components/shared/theme-toggle'
 
 const navItems = [
   { href: '/admin/agenda', label: 'Agenda', icon: LayoutGrid },
@@ -61,7 +62,7 @@ export default function AdminLayout({
           <Image src="/images/Logo-Kalm-Head-spa-white.png" alt="Kalm Headspa" width={24} height={24} className="h-6 w-auto hidden dark:block" />
           <span className="font-serif font-semibold text-foreground">Admin</span>
         </div>
-        <div className="w-10" />
+        <ThemeToggle />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -116,14 +117,17 @@ function SidebarContent({
               <p className="text-xs text-foreground-muted">Administration</p>
             </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-background transition-colors lg:hidden"
-            >
-              <X className="h-5 w-5 text-foreground-muted" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!onClose && <ThemeToggle />}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg hover:bg-background transition-colors lg:hidden"
+              >
+                <X className="h-5 w-5 text-foreground-muted" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -39,6 +39,7 @@ interface ServiceData {
   duration: number | null
   price: number | null
   hair_length: string | null
+  buffer_time: number
   sort_order: number
   is_active: boolean
   service_variants: Variant[]
@@ -105,6 +106,7 @@ export default function AdminPrestationsPage() {
           duration: service.has_variants ? null : service.duration,
           price: service.has_variants ? null : service.price,
           hair_length: service.has_variants ? null : service.hair_length,
+          buffer_time: service.buffer_time,
           is_active: service.is_active,
           sort_order: service.sort_order,
           variants: service.has_variants
@@ -149,6 +151,7 @@ export default function AdminPrestationsPage() {
           duration: service.has_variants ? null : service.duration,
           price: service.has_variants ? null : service.price,
           hair_length: service.has_variants ? null : service.hair_length,
+          buffer_time: service.buffer_time,
           is_active: service.is_active,
           sort_order: services.length + 1,
           variants: service.has_variants
@@ -252,6 +255,7 @@ export default function AdminPrestationsPage() {
             {editingId === service.id ? (
               <div className="p-6">
                 <ServiceForm
+                  key={service.id}
                   initialData={service}
                   onSave={handleSave}
                   onCancel={() => setEditingId(null)}
@@ -460,6 +464,7 @@ function ServiceForm({
       duration: 60,
       price: 50,
       hair_length: null,
+      buffer_time: 15,
       sort_order: 0,
       is_active: true,
       service_variants: [],
@@ -472,6 +477,7 @@ function ServiceForm({
   const [extrasLoading, setExtrasLoading] = useState(false)
 
   // Fetch all extras + current assignments
+  // IMPORTANT : utiliser initialData entier comme dépendance pour forcer le rechargement
   useEffect(() => {
     setExtrasLoading(true)
     const requests: Promise<void>[] = [
@@ -484,12 +490,17 @@ function ServiceForm({
       requests.push(
         fetch(`/api/admin/service-extras?serviceId=${encodeURIComponent(initialData.id)}`)
           .then((r) => r.json())
-          .then((data: { extraIds: string[] }) => setSelectedExtraIds(data.extraIds ?? []))
+          .then((data: { extraIds: string[] }) => {
+            setSelectedExtraIds(data.extraIds ?? [])
+          })
           .catch(() => {})
       )
+    } else {
+      setSelectedExtraIds([])
     }
     Promise.all(requests).finally(() => setExtrasLoading(false))
-  }, [initialData?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData])
 
   const toggleExtra = (id: string) => {
     setSelectedExtraIds((prev) =>
@@ -519,13 +530,16 @@ function ServiceForm({
 
     // Save extras assignment
     try {
-      await fetch('/api/admin/service-extras', {
+      const res = await fetch('/api/admin/service-extras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId: data.id, extraIds: selectedExtraIds }),
       })
-    } catch {
-      // Non-bloquant
+      if (!res.ok) {
+        console.error('[ServiceForm] Erreur sauvegarde extras:', await res.text())
+      }
+    } catch (err) {
+      console.error('[ServiceForm] Erreur sauvegarde extras:', err)
     }
 
     setSaving(false)
@@ -673,6 +687,26 @@ function ServiceForm({
             </div>
           </>
         )}
+
+        {/* Buffer time - Always visible */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-foreground mb-1">
+            Temps tampon après prestation (minutes)
+          </label>
+          <input
+            type="number"
+            value={form.buffer_time}
+            onChange={(e) =>
+              setForm({ ...form, buffer_time: parseInt(e.target.value) || 0 })
+            }
+            min="0"
+            max="60"
+            className="w-full px-4 py-2.5 rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <p className="text-xs text-foreground-muted mt-1">
+            Délai ajouté automatiquement après chaque réservation (ex: 15 min pour nettoyer/aérer entre deux clients)
+          </p>
+        </div>
       </div>
 
       {/* Variants */}

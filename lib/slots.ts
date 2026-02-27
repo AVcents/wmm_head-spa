@@ -127,6 +127,8 @@ export async function generateSlots(
   }
 
   // ── 2. Charger le planning depuis Supabase ────────────────────
+  const supabase = createAdminClient()
+
   const [templates, activeTemplateId, overrides] = await Promise.all([
     getAllScheduleTemplates(),
     getActiveTemplateId(),
@@ -136,6 +138,28 @@ export async function generateSlots(
   const templateMap = new Map(templates.map(t => [t.id, t]))
   const activeTemplate = templateMap.get(activeTemplateId)
   const overrideMap = new Map(overrides.map(o => [o.week_start, o]))
+
+  // ── 2b. Récupérer le buffer_time du service ───────────────────
+  let bufferTime = 0
+
+  // Essayer d'abord de récupérer depuis service_variants
+  const { data: variantData } = await supabase
+    .from('service_variants')
+    .select('service_id')
+    .eq('id', cacheKey)
+    .single()
+
+  const serviceId = variantData?.service_id || cacheKey
+
+  const { data: serviceData } = await supabase
+    .from('services')
+    .select('buffer_time')
+    .eq('id', serviceId)
+    .single()
+
+  if (serviceData?.buffer_time) {
+    bufferTime = serviceData.buffer_time
+  }
 
   // Lundi de la semaine contenant cette date
   const monday = getMondayOf(new Date(date + 'T12:00:00Z'))
@@ -150,20 +174,36 @@ export async function generateSlots(
   if (dayBlocks.length === 0) return []
 
   // ── 4. Réservations confirmées sur ce jour ────────────────────
-  const supabase = createAdminClient()
   // On charge les bookings sur toute la journée Paris (UTC peut déborder de minuit)
   const { data: confirmedRows } = await supabase
     .from('bookings')
-    .select('starts_at, ends_at')
+    .select('starts_at, ends_at, duration, service_id')
     .eq('status', 'confirmed')
     .gte('starts_at', `${date}T00:00:00Z`)
     .lt('starts_at', addDays(date, 1) + 'T00:00:00Z')
 
-  const confirmedBookings = (confirmedRows ?? []) as { starts_at: string; ends_at: string }[]
+  // Pour chaque booking, on doit ajouter son buffer_time
+  const bookingsWithBuffer = await Promise.all(
+    (confirmedRows ?? []).map(async (b) => {
+      const { data: bookingService } = await supabase
+        .from('services')
+        .select('buffer_time')
+        .eq('id', b.service_id)
+        .single()
+
+      const bookingBuffer = bookingService?.buffer_time || 0
+      const bStart = new Date(b.starts_at).getTime()
+      const bEnd = new Date(b.ends_at).getTime()
+      const bEndWithBuffer = bEnd + (bookingBuffer * 60_000)
+
+      return { starts_at: b.starts_at, ends_at: new Date(bEndWithBuffer).toISOString() }
+    })
+  )
 
   // ── 5. Génération des créneaux ────────────────────────────────
   const allSlots: Slot[] = []
   const durationMs = duration * 60_000
+  const totalDurationWithBuffer = (duration + bufferTime) * 60_000
 
   for (const block of dayBlocks) {
     const blockStartMs = new Date(parisTimeToUTCIso(date, block.start_time)).getTime()
@@ -173,23 +213,25 @@ export async function generateSlots(
     while (cursor + durationMs <= blockEndMs) {
       const slotStartMs = cursor
       const slotEndMs = cursor + durationMs
+      const slotEndWithBufferMs = cursor + totalDurationWithBuffer
 
-      // Vérifie qu'aucune réservation ne chevauche ce créneau
-      const overlaps = confirmedBookings.some(b => {
+      // Vérifie qu'aucune réservation (avec buffer) ne chevauche ce créneau (avec buffer)
+      const overlaps = bookingsWithBuffer.some(b => {
         const bStart = new Date(b.starts_at).getTime()
         const bEnd = new Date(b.ends_at).getTime()
-        // Chevauchement : [slotStart, slotEnd[ ∩ [bStart, bEnd[ ≠ ∅
-        return slotStartMs < bEnd && slotEndMs > bStart
+        // Chevauchement : [slotStart, slotEndWithBuffer[ ∩ [bStart, bEnd[ ≠ ∅
+        return slotStartMs < bEnd && slotEndWithBufferMs > bStart
       })
 
       if (!overlaps) {
         allSlots.push({
           starts_at: new Date(slotStartMs).toISOString(),
-          ends_at: new Date(slotEndMs).toISOString(),
+          ends_at: new Date(slotEndMs).toISOString(), // Sans le buffer dans le retour
         })
       }
 
-      cursor += durationMs
+      // Avancer du temps total (durée + buffer) pour espacer les créneaux
+      cursor += totalDurationWithBuffer
     }
   }
 

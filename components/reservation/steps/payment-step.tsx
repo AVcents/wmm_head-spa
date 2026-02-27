@@ -167,7 +167,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
   >('idle')
   const [giftCardError, setGiftCardError] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [_paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
+  const [_paymentIntentId, _setPaymentIntentId] = useState<string | null>(null)
   const [remainingAmount, setRemainingAmount] = useState<number | null>(null)
   const [loadingIntent, setLoadingIntent] = useState(false)
   const [confirmingBooking, setConfirmingBooking] = useState(false)
@@ -190,7 +190,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
       setLoadingIntent(true)
       setError(null)
       setClientSecret(null)
-      setPaymentIntentId(null)
+      _setPaymentIntentId(null)
 
       try {
         const res = await fetch('/api/booking/create-intent', {
@@ -216,7 +216,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
 
         if (data.clientSecret) {
           setClientSecret(data.clientSecret)
-          setPaymentIntentId(data.paymentIntentId ?? null)
+          _setPaymentIntentId(data.paymentIntentId ?? null)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Une erreur est survenue')
@@ -232,7 +232,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
     setSelectedMode(mode)
     setError(null)
     setClientSecret(null)
-    setPaymentIntentId(null)
+    _setPaymentIntentId(null)
     setGiftCardStatus('idle')
     setGiftCardError(null)
     setRemainingAmount(null)
@@ -249,7 +249,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
     setGiftCardStatus('loading')
     setGiftCardError(null)
     setClientSecret(null)
-    setPaymentIntentId(null)
+    _setPaymentIntentId(null)
     setRemainingAmount(null)
 
     try {
@@ -284,7 +284,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         setRemainingAmount(data.remainingAmount ?? 0)
         if (data.clientSecret) {
           setClientSecret(data.clientSecret)
-          setPaymentIntentId(data.paymentIntentId ?? null)
+          _setPaymentIntentId(data.paymentIntentId ?? null)
         }
       }
     } catch (err) {

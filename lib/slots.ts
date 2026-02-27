@@ -192,7 +192,6 @@ export async function generateSlots(
         .single()
 
       const bookingBuffer = bookingService?.buffer_time || 0
-      const bStart = new Date(b.starts_at).getTime()
       const bEnd = new Date(b.ends_at).getTime()
       const bEndWithBuffer = bEnd + (bookingBuffer * 60_000)
 

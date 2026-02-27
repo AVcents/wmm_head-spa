@@ -167,6 +167,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
   >('idle')
   const [giftCardError, setGiftCardError] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_paymentIntentId, _setPaymentIntentId] = useState<string | null>(null)
   const [remainingAmount, setRemainingAmount] = useState<number | null>(null)
   const [loadingIntent, setLoadingIntent] = useState(false)

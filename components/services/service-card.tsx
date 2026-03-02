@@ -85,7 +85,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
                 Bon cadeau
               </Button>
             </Link>
-            <Link href={`/reservation?serviceId=${service.id}`}>
+            <Link href={`/reservation?service=${service.id}`}>
               <Button size="sm">Réserver</Button>
             </Link>
           </div>
@@ -179,7 +179,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
                           Bon cadeau
                         </Button>
                       </Link>
-                      <Link href={`/reservation?serviceId=${service.id}&variantId=${variant.id}`}>
+                      <Link href={`/reservation?service=${service.id}&variant=${variant.id}`}>
                         <Button size="sm" variant="outline">
                           Réserver
                         </Button>

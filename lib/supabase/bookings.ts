@@ -102,12 +102,12 @@ export async function getBookings(params?: {
   to?: string         // YYYY-MM-DD
   status?: string
   limit?: number
-}): Promise<BookingRow[]> {
+}): Promise<(BookingRow & { buffer_time?: number })[]> {
   const supabase = createAdminClient()
 
   let query = supabase
     .from('bookings')
-    .select('*')
+    .select('*, services!inner(buffer_time)')
     .order('starts_at', { ascending: true })
 
   if (params?.status) {
@@ -135,7 +135,15 @@ export async function getBookings(params?: {
     return []
   }
 
-  return (data ?? []) as BookingRow[]
+  // Flatten services.buffer_time to booking level
+  return (data ?? []).map((row: unknown) => {
+    const booking = row as BookingRow & { services?: { buffer_time?: number } }
+    return {
+      ...booking,
+      buffer_time: booking.services?.buffer_time ?? 0,
+      services: undefined, // Remove nested object
+    }
+  }) as (BookingRow & { buffer_time?: number })[]
 }
 
 /** Récupère une réservation par ID */

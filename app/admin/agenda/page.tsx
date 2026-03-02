@@ -65,7 +65,11 @@ function addDays(date: Date, days: number): Date {
 }
 
 function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0]!
+  // Retourner la date en format YYYY-MM-DD en heure locale (pas UTC)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function slotToTime(slotIndex: number): string {
@@ -76,8 +80,18 @@ function slotToTime(slotIndex: number): string {
 }
 
 function bookingTopPx(starts_at: string): number {
+  // Convertir UTC vers heure locale (Europe/Paris)
   const d = new Date(starts_at)
-  const minutesFromStart = d.getHours() * 60 + d.getMinutes() - HOUR_START * 60
+  const parisTime = d.toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+  const [hourStr, minuteStr] = parisTime.split(':')
+  const hour = Number(hourStr)
+  const minute = Number(minuteStr)
+  const minutesFromStart = hour * 60 + minute - HOUR_START * 60
   return (minutesFromStart / SLOT_MINUTES) * SLOT_HEIGHT
 }
 
@@ -97,7 +111,7 @@ export default function AdminAgendaPage() {
   const [weekStart, setWeekStart] = useState<Date>(() => getMondayOf(new Date()))
 
   // Data
-  const [bookings, setBookings]         = useState<BookingRow[]>([])
+  const [bookings, setBookings]         = useState<(BookingRow & { buffer_time?: number })[]>([])
   const [localServices, setLocalServices] = useState<LocalService[]>([])
 
   // UI state
@@ -153,7 +167,7 @@ export default function AdminAgendaPage() {
       const to   = formatDate(addDays(start, 6))
       const res  = await fetch(`/api/admin/bookings?from=${from}&to=${to}`)
       if (!res.ok) throw new Error()
-      const data: BookingRow[] = await res.json()
+      const data: (BookingRow & { buffer_time?: number })[] = await res.json()
       setBookings(data.filter((b) => b.status === 'confirmed'))
     } catch {
       // silencieux — on garde les anciennes données
@@ -212,7 +226,14 @@ export default function AdminAgendaPage() {
 
     setSubmitting(true)
     try {
-      const startsAt = new Date(`${modal.date}T${modal.time}:00`)
+      // Créer la date en heure locale Paris et convertir en UTC
+      const [year, month, day] = modal.date.split('-').map(Number)
+      const [hour, minute] = modal.time.split(':').map(Number)
+      const localDate = new Date(year!, month! - 1, day!, hour!, minute!)
+
+      // Convertir en UTC en compensant le décalage horaire
+      const offsetMs = localDate.getTimezoneOffset() * 60000
+      const startsAt = new Date(localDate.getTime() - offsetMs)
       const endsAt   = new Date(startsAt.getTime() + duration * 60000)
 
       const res = await fetch('/api/admin/bookings', {
@@ -271,7 +292,17 @@ export default function AdminAgendaPage() {
 
   const bookingsForDay = (day: Date) => {
     const dateStr = formatDate(day)
-    return bookings.filter((b) => b.starts_at.startsWith(dateStr))
+    // Filtrer les bookings qui tombent sur ce jour en heure locale Paris
+    return bookings.filter((b) => {
+      const d = new Date(b.starts_at)
+      const parisDate = d.toLocaleDateString('fr-FR', {
+        timeZone: 'Europe/Paris',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split('/').reverse().join('-') // DD/MM/YYYY → YYYY-MM-DD
+      return parisDate === dateStr
+    })
   }
 
   const formatWeekLabel = () => {
@@ -405,7 +436,10 @@ export default function AdminAgendaPage() {
                   {/* Clickable slot rows */}
                   {Array.from({ length: TOTAL_SLOTS }, (_, slotIdx) => {
                     const time         = slotToTime(slotIdx)
-                    const slotDateTime = new Date(`${dateStr}T${time}:00`)
+                    // Créer la date en heure locale (pas UTC)
+                    const [year, month, dayNum] = dateStr.split('-').map(Number)
+                    const [hour, minute] = time.split(':').map(Number)
+                    const slotDateTime = new Date(year!, month! - 1, dayNum!, hour!, minute!)
                     const isPast       = slotDateTime < new Date()
                     const isHourBorder = slotIdx % 2 === 0
 
@@ -430,31 +464,51 @@ export default function AdminAgendaPage() {
                   {dayBookings.map((booking) => {
                     const top    = bookingTopPx(booking.starts_at)
                     const height = bookingHeightPx(booking.starts_at, booking.ends_at)
+                    const bufferTime = booking.buffer_time ?? 0
+                    const bufferHeightPx = bufferTime > 0 ? (bufferTime / SLOT_MINUTES) * SLOT_HEIGHT : 0
 
                     if (top < 0 || top > TOTAL_SLOTS * SLOT_HEIGHT) return null
 
                     return (
-                      <div
-                        key={booking.id}
-                        className="absolute left-0.5 right-0.5 rounded-lg bg-primary-500 text-white px-2 py-1.5 overflow-hidden shadow-sm group cursor-default z-10"
-                        style={{ top: `${top}px`, height: `${height - 2}px` }}
-                      >
-                        <p className="text-xs font-bold leading-tight">{formatTime(booking.starts_at)}</p>
-                        <p className="text-xs truncate font-medium leading-tight mt-0.5">{booking.client_name}</p>
-                        {height > SLOT_HEIGHT && (
-                          <p className="text-xs truncate opacity-80 leading-tight">{booking.service_name}</p>
-                        )}
-                        {/* Cancel button on hover */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            void handleCancelBooking(booking.id)
-                          }}
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded bg-white/20 hover:bg-white/40"
-                          title="Annuler la réservation"
+                      <div key={booking.id}>
+                        {/* Réservation principale */}
+                        <div
+                          className="absolute left-0.5 right-0.5 rounded-lg bg-primary-500 text-white px-2 py-1.5 overflow-hidden shadow-sm group cursor-default z-10"
+                          style={{ top: `${top}px`, height: `${height - 2}px` }}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <p className="text-xs font-bold leading-tight">{formatTime(booking.starts_at)}</p>
+                          <p className="text-xs truncate font-medium leading-tight mt-0.5">{booking.client_name}</p>
+                          {height > SLOT_HEIGHT && (
+                            <p className="text-xs truncate opacity-80 leading-tight">{booking.service_name}</p>
+                          )}
+                          {/* Cancel button on hover */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void handleCancelBooking(booking.id)
+                            }}
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded bg-white/20 hover:bg-white/40"
+                            title="Annuler la réservation"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Battement (bande grise) */}
+                        {bufferTime > 0 && (
+                          <div
+                            className="absolute left-0.5 right-0.5 bg-slate-300/60 dark:bg-slate-600/40 border-l-2 border-primary-400 z-5"
+                            style={{
+                              top: `${top + height}px`,
+                              height: `${bufferHeightPx}px`,
+                            }}
+                            title={`Battement : ${bufferTime} min`}
+                          >
+                            <p className="text-[10px] text-slate-600 dark:text-slate-300 px-1 pt-0.5 leading-tight opacity-70">
+                              Battement {bufferTime}min
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -488,9 +542,14 @@ export default function AdminAgendaPage() {
                   Nouvelle réservation
                 </h3>
                 <p className="text-sm text-foreground-secondary mt-0.5">
-                  {new Date(`${modal.date}T${modal.time}`).toLocaleDateString('fr-FR', {
-                    weekday: 'long', day: 'numeric', month: 'long',
-                  })}{' '}à {modal.time}
+                  {(() => {
+                    const [year, month, day] = modal.date.split('-').map(Number)
+                    const [hour, minute] = modal.time.split(':').map(Number)
+                    const localDate = new Date(year!, month! - 1, day!, hour!, minute!)
+                    return localDate.toLocaleDateString('fr-FR', {
+                      weekday: 'long', day: 'numeric', month: 'long',
+                    })
+                  })()}{' '}à {modal.time}
                 </p>
               </div>
               <button onClick={closeModal} className="p-2 rounded-xl hover:bg-background transition-colors">

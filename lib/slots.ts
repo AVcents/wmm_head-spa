@@ -27,7 +27,7 @@ export interface Slot {
  * Convertit une heure locale Paris (HH:MM, date YYYY-MM-DD) en ISO UTC.
  * Gère automatiquement CET (UTC+1) et CEST (UTC+2) via l'API Intl.
  */
-function parisTimeToUTCIso(dateStr: string, timeStr: string): string {
+export function parisTimeToUTCIso(dateStr: string, timeStr: string): string {
   const [yearS, monthS, dayS] = dateStr.split('-')
   const [hourS, minuteS] = timeStr.split(':')
   const year = Number(yearS)
@@ -229,8 +229,8 @@ export async function generateSlots(
         })
       }
 
-      // Avancer du temps total (durée + buffer) pour espacer les créneaux
-      cursor += totalDurationWithBuffer
+      // Avancer de 15 minutes pour proposer un maximum de créneaux
+      cursor += 15 * 60_000
     }
   }
 

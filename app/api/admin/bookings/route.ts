@@ -3,6 +3,7 @@ import { isAuthenticated } from '@/lib/auth'
 import { createBooking, getBookings } from '@/lib/supabase/bookings'
 import { sendBookingEmails } from '@/lib/email'
 import { invalidateSlotsCache } from '@/lib/data'
+import { parisTimeToUTCIso } from '@/lib/slots'
 
 /**
  * GET /api/admin/bookings — Lister les réservations
@@ -83,15 +84,35 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Convertir les heures locales Paris en UTC
+    // startsAt et endsAt sont au format "YYYY-MM-DDTHH:MM:SS"
+    const startsAtParts = String(startsAt).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+    const endsAtParts = String(endsAt).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+
+    if (!startsAtParts || !endsAtParts) {
+      return NextResponse.json(
+        { error: 'Format de date invalide. Attendu: YYYY-MM-DDTHH:MM:SS' },
+        { status: 400 }
+      )
+    }
+
+    const startsAtDate = `${startsAtParts[1]}-${startsAtParts[2]}-${startsAtParts[3]}`
+    const startsAtTime = `${startsAtParts[4]}:${startsAtParts[5]}`
+    const endsAtDate = `${endsAtParts[1]}-${endsAtParts[2]}-${endsAtParts[3]}`
+    const endsAtTime = `${endsAtParts[4]}:${endsAtParts[5]}`
+
+    const startsAtUTC = parisTimeToUTCIso(startsAtDate, startsAtTime)
+    const endsAtUTC = parisTimeToUTCIso(endsAtDate, endsAtTime)
+
     const resolvedDuration = duration
       ? Number(duration)
-      : Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60000)
+      : Math.round((new Date(endsAtUTC).getTime() - new Date(startsAtUTC).getTime()) / 60000)
 
     // Construire les données de réservation en omettant les propriétés undefined
     const bookingData: Parameters<typeof createBooking>[0] = {
       service_id:   String(serviceId),
-      starts_at:    String(startsAt),
-      ends_at:      String(endsAt),
+      starts_at:    startsAtUTC,
+      ends_at:      endsAtUTC,
       duration:     resolvedDuration,
       client_name:  name ? String(name) : 'Admin',
       client_email: email ? String(email) : '',

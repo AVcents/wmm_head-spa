@@ -4,7 +4,8 @@
       "Bash(pnpm run build)",
       "Bash(git add package.json)",
       "Bash(git commit -m \"fix: remove .next/cache after build to prevent Vercel deployment timeout\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "WebFetch(domain:www.vercel-status.com)"
     ],
     "deny": [],
     "ask": []

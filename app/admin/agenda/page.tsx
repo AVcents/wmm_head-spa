@@ -12,6 +12,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import type { BookingRow } from '@/lib/supabase/types'
+import { parisTimeToUTCIso } from '@/lib/slots'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,7 +102,11 @@ function bookingHeightPx(starts_at: string, ends_at: string): number {
 }
 
 function formatTime(isoString: string): string {
-  return new Date(isoString).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(isoString).toLocaleTimeString('fr-FR', {
+    timeZone: 'Europe/Paris',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -226,15 +231,14 @@ export default function AdminAgendaPage() {
 
     setSubmitting(true)
     try {
-      // Créer la date en heure locale Paris et convertir en UTC
+      // On envoie juste la string "YYYY-MM-DDTHH:MM:00" côté serveur
+      // Le serveur devra interpréter ça comme heure de Paris
+      const startsAtLocal = `${modal.date}T${modal.time}:00`
       const [year, month, day] = modal.date.split('-').map(Number)
       const [hour, minute] = modal.time.split(':').map(Number)
       const localDate = new Date(year!, month! - 1, day!, hour!, minute!)
-
-      // Convertir en UTC en compensant le décalage horaire
-      const offsetMs = localDate.getTimezoneOffset() * 60000
-      const startsAt = new Date(localDate.getTime() - offsetMs)
-      const endsAt   = new Date(startsAt.getTime() + duration * 60000)
+      const endsAtLocal = new Date(localDate.getTime() + duration * 60000)
+      const endsAtStr = `${endsAtLocal.getFullYear()}-${String(endsAtLocal.getMonth() + 1).padStart(2, '0')}-${String(endsAtLocal.getDate()).padStart(2, '0')}T${String(endsAtLocal.getHours()).padStart(2, '0')}:${String(endsAtLocal.getMinutes()).padStart(2, '0')}:00`
 
       const res = await fetch('/api/admin/bookings', {
         method: 'POST',
@@ -242,8 +246,8 @@ export default function AdminAgendaPage() {
         body: JSON.stringify({
           serviceId:   modalServiceId,
           variantId:   modalVariantId || undefined,
-          startsAt:    startsAt.toISOString(),
-          endsAt:      endsAt.toISOString(),
+          startsAt:    startsAtLocal,
+          endsAt:      endsAtStr,
           name:        modalClientName,
           email:       modalClientEmail,
           phone:       modalClientPhone || undefined,

@@ -12,7 +12,6 @@ import {
   Calendar,
 } from 'lucide-react'
 import type { BookingRow } from '@/lib/supabase/types'
-import { parisTimeToUTCIso } from '@/lib/slots'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 

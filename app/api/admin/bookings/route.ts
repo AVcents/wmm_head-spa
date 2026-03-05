@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
         clientPhone:  phone ? String(phone) : '',
         serviceName:  serviceName ? String(serviceName) : '',
         ...(variantName ? { variantLabel: String(variantName) } : {}),
-        date:         String(startsAt),
+        date:         startsAtUTC,
         duration:     resolvedDuration,
         price:        Number(price ?? 0),
         ...(message ? { message: String(message) } : {}),

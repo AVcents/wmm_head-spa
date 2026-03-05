@@ -58,6 +58,7 @@ function formatDateFr(isoString: string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
   })
 }
 

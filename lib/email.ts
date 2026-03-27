@@ -755,7 +755,7 @@ export async function sendBookingEmails(data: BookingEmailData): Promise<void> {
     sendToClient: data.sendToClient !== false,
   })
 
-  const sends = []
+  const sends: Array<{ label: string; to: string; subject: string; html: string }> = []
 
   // Email client (optionnel si sendToClient = false)
   if (data.sendToClient !== false) {

@@ -137,23 +137,22 @@ export async function POST(req: NextRequest) {
     const bookingDate = startsAt.slice(0, 10)
     invalidateSlotsCache(variantId ?? serviceId, bookingDate).catch(() => {})
 
-    // Email de confirmation uniquement si email fourni
-    if (clientEmail) {
-      sendBookingEmails({
-        clientName,
-        clientEmail,
-        clientPhone: clientPhone ?? '',
-        serviceName: resolvedServiceName,
-        ...(variantName ? { variantLabel: variantName } : {}),
-        date:      startsAt,
-        duration,
-        price:     0,
-        bookingId: booking.id,
-        ...(note ? { message: note } : {}),
-      }).catch((err) => {
-        console.error('[admin/manual-booking] Erreur email:', err)
-      })
-    }
+    // Email de confirmation : toujours envoyer au salon, client uniquement si email fourni
+    sendBookingEmails({
+      clientName,
+      clientEmail: clientEmail ?? '', // Vide si pas d'email client
+      clientPhone: clientPhone ?? '',
+      serviceName: resolvedServiceName,
+      ...(variantName ? { variantLabel: variantName } : {}),
+      date:      startsAt,
+      duration,
+      price:     0,
+      bookingId: booking.id,
+      sendToClient: !!clientEmail, // N'envoie au client que si email fourni
+      ...(note ? { message: note } : {}),
+    }).catch((err) => {
+      console.error('[admin/manual-booking] Erreur email:', err)
+    })
 
     return NextResponse.json({ bookingId: booking.id })
   } catch (error) {

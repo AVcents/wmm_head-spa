@@ -47,6 +47,7 @@ export interface BookingEmailData {
   message?: string
   giftCardCode?: string
   bookingId: string
+  sendToClient?: boolean  // Si false, n'envoie que le email salon (défaut: true)
 }
 
 // -----------------------------------------------
@@ -751,12 +752,28 @@ export async function sendBookingEmails(data: BookingEmailData): Promise<void> {
     from: FROM,
     clientEmail: data.clientEmail,
     salonEmail: SALON_EMAIL,
+    sendToClient: data.sendToClient !== false,
   })
 
-  const sends = [
-    { label: 'client', to: data.clientEmail, subject: `Réservation confirmée — ${serviceDisplay} · ${dateStr}`, html: buildClientHtml(data) },
-    { label: 'salon', to: SALON_EMAIL, subject: `[Nouvelle résa] ${data.clientName} — ${serviceDisplay} · ${dateStr}`, html: buildSalonHtml(data) },
-  ]
+  const sends = []
+
+  // Email client (optionnel si sendToClient = false)
+  if (data.sendToClient !== false) {
+    sends.push({
+      label: 'client',
+      to: data.clientEmail,
+      subject: `Réservation confirmée — ${serviceDisplay} · ${dateStr}`,
+      html: buildClientHtml(data)
+    })
+  }
+
+  // Email salon (toujours envoyé)
+  sends.push({
+    label: 'salon',
+    to: SALON_EMAIL,
+    subject: `[Nouvelle résa] ${data.clientName} — ${serviceDisplay} · ${dateStr}`,
+    html: buildSalonHtml(data)
+  })
 
   const results = await Promise.allSettled(
     sends.map(({ to, subject, html }) =>

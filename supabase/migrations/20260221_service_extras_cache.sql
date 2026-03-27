@@ -6,7 +6,7 @@
 -- Permet d'assigner des extras spécifiques à chaque prestation
 CREATE TABLE IF NOT EXISTS service_extras (
   service_id TEXT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-  extra_id   UUID NOT NULL REFERENCES extras(id)   ON DELETE CASCADE,
+  extra_id   TEXT NOT NULL REFERENCES extras(id)   ON DELETE CASCADE,
   sort_order INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (service_id, extra_id)
 );

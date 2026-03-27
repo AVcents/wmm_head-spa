@@ -187,7 +187,13 @@ export default function ReservationContent({
                   selectedExtras={booking.selectedExtras}
                   {...(booking.service?.id ? { serviceId: booking.service.id } : {})}
                   onNext={(extras) => {
-                    updateBooking({ selectedExtras: extras })
+                    // Si les extras ont changé, réinitialiser le slot (car les créneaux vont changer)
+                    const extrasChanged = JSON.stringify(extras.map(e => e.id).sort()) !==
+                                          JSON.stringify(booking.selectedExtras.map(e => e.id).sort())
+                    updateBooking({
+                      selectedExtras: extras,
+                      ...(extrasChanged ? { slot: null } : {})
+                    })
                     goTo('date')
                   }}
                   onBack={() => goTo('service')}
@@ -209,6 +215,7 @@ export default function ReservationContent({
                   service={booking.service}
                   variantId={booking.variantId}
                   date={booking.date}
+                  selectedExtras={booking.selectedExtras}
                   onSelect={(slot) => {
                     updateBooking({ slot })
                     goTo('info')

@@ -24,6 +24,7 @@ interface Extra {
   name: string
   description: string | null
   price: number
+  duration: number
   is_active: boolean
   sort_order: number
 }
@@ -51,6 +52,7 @@ function ExtraModal({ extra, onSave, onClose }: ModalProps) {
   const [name, setName] = useState(extra?.name ?? '')
   const [description, setDescription] = useState(extra?.description ?? '')
   const [price, setPrice] = useState(extra?.price?.toString() ?? '')
+  const [duration, setDuration] = useState(extra?.duration?.toString() ?? '0')
   const [isActive, setIsActive] = useState(extra?.is_active ?? true)
   const [sortOrder, setSortOrder] = useState(extra?.sort_order?.toString() ?? '0')
   const [saving, setSaving] = useState(false)
@@ -61,6 +63,8 @@ function ExtraModal({ extra, onSave, onClose }: ModalProps) {
     if (!name.trim() || !price) { setError('Nom et prix sont obligatoires.'); return }
     const p = parseFloat(price)
     if (isNaN(p) || p < 0) { setError('Prix invalide.'); return }
+    const d = parseInt(duration)
+    if (isNaN(d) || d < 0) { setError('Durée invalide.'); return }
     setSaving(true)
     setError(null)
     try {
@@ -68,6 +72,7 @@ function ExtraModal({ extra, onSave, onClose }: ModalProps) {
         name: name.trim(),
         description: description.trim() || null,
         price: p,
+        duration: d,
         is_active: isActive,
         sort_order: parseInt(sortOrder) || 0,
       })
@@ -109,6 +114,25 @@ function ExtraModal({ extra, onSave, onClose }: ModalProps) {
               rows={2}
               className={inputClass + ' resize-none'}
             />
+          </div>
+
+          {/* Durée */}
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1.5">
+              Durée supplémentaire <span className="text-xs text-foreground-muted">(en minutes)</span>
+            </label>
+            <input
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              min="0"
+              step="5"
+              placeholder="15"
+              className={inputClass}
+            />
+            <p className="text-xs text-foreground-muted mt-1">
+              Temps ajouté à la prestation de base (ex: 15 min pour un massage additionnel)
+            </p>
           </div>
 
           {/* Prix + Ordre */}
@@ -338,6 +362,11 @@ export default function AdminExtrasPage() {
                 <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
                   +{Number(extra.price).toFixed(2)}€
                 </span>
+                {extra.duration > 0 && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                    +{extra.duration} min
+                  </span>
+                )}
               </div>
               {extra.description && (
                 <p className="text-sm text-foreground-secondary mt-0.5 truncate">{extra.description}</p>

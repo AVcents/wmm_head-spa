@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
     const serviceId = searchParams.get('serviceId')
     const variantId = searchParams.get('variantId') ?? null
     const date = searchParams.get('date')
+    const extrasDurationParam = searchParams.get('extrasDuration')
 
     if (!serviceId || !date) {
       return errorJson('serviceId et date sont requis')
@@ -40,7 +41,8 @@ export async function GET(req: NextRequest) {
 
     // ── Résoudre la durée depuis Supabase ──────────────────────────
     const supabase = createAdminClient()
-    let duration: number
+    let baseDuration: number
+    const extrasDuration = extrasDurationParam ? parseInt(extrasDurationParam, 10) : 0
 
     if (variantId) {
       const { data: variant } = await supabase
@@ -50,7 +52,7 @@ export async function GET(req: NextRequest) {
         .single()
 
       if (!variant) return errorJson('Variant introuvable', 404)
-      duration = (variant as { duration: number }).duration
+      baseDuration = (variant as { duration: number }).duration
     } else {
       const { data: service } = await supabase
         .from('services')
@@ -61,8 +63,11 @@ export async function GET(req: NextRequest) {
       if (!service || !(service as { duration: number | null }).duration) {
         return errorJson('Service introuvable ou sans durée définie', 404)
       }
-      duration = (service as { duration: number }).duration
+      baseDuration = (service as { duration: number }).duration
     }
+
+    // Durée totale = durée du service + durée des extras
+    const duration = baseDuration + extrasDuration
 
     // ── Générer les créneaux ───────────────────────────────────────
     // Clé de cache : variantId si présent (durée spécifique), sinon serviceId

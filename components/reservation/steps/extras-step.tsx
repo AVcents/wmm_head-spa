@@ -10,6 +10,7 @@ export interface Extra {
   name: string
   description: string | null
   price: number
+  duration: number // Durée supplémentaire en minutes
 }
 
 interface Props {
@@ -132,6 +133,9 @@ export function ExtrasStep({ selectedExtras: initialExtras, serviceId, onNext, o
                     </p>
                     {extra.description && (
                       <p className="text-sm text-foreground-secondary mt-0.5">{extra.description}</p>
+                    )}
+                    {extra.duration > 0 && (
+                      <p className="text-xs text-foreground-muted mt-1">+{extra.duration} min</p>
                     )}
                   </div>
 

@@ -9,10 +9,16 @@ interface Slot {
   ends_at: string
 }
 
+interface Extra {
+  id: string
+  duration: number
+}
+
 interface Props {
   service: Service
   variantId: string | null
   date: string
+  selectedExtras: Extra[]
   onSelect: (slot: { startsAt: string; endsAt: string }) => void
 }
 
@@ -33,7 +39,7 @@ function formatDateFr(dateStr: string): string {
   })
 }
 
-export function SlotStep({ service, variantId, date, onSelect }: Props) {
+export function SlotStep({ service, variantId, date, selectedExtras, onSelect }: Props) {
   const [slots, setSlots] = useState<Slot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +50,9 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
       setError(null)
 
       try {
+        // Calculer la durée totale des extras
+        const extrasDuration = selectedExtras.reduce((sum, extra) => sum + extra.duration, 0)
+
         // Appel direct avec les IDs Supabase — plus de matching Hapio
         const params = new URLSearchParams({
           action:    'slots',
@@ -51,6 +60,7 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
           date,
         })
         if (variantId) params.set('variantId', variantId)
+        if (extrasDuration > 0) params.set('extrasDuration', extrasDuration.toString())
 
         const res = await fetch(`/api/booking?${params.toString()}`)
         const data = await res.json()
@@ -74,7 +84,7 @@ export function SlotStep({ service, variantId, date, onSelect }: Props) {
     }
 
     fetchSlots()
-  }, [service.id, variantId, date])
+  }, [service.id, variantId, date, selectedExtras])
 
   // Grouper par matin / après-midi
   const morningSlots   = slots.filter(s => new Date(s.starts_at).getHours() < 12)

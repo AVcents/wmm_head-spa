@@ -3,7 +3,7 @@
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS extras (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
   price NUMERIC(10,2) NOT NULL,

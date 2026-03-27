@@ -30,12 +30,13 @@ export async function POST(req: NextRequest) {
   if (authError) return authError
   try {
     const body = await req.json()
-    const { name, description, price, is_active, sort_order } = body
+    const { name, description, price, duration, is_active, sort_order } = body
     if (!name || price == null) return errorJson('name et price sont requis')
     const extra = await createExtra({
       name: String(name).trim(),
       description: description ? String(description).trim() : null,
       price: Number(price),
+      duration: Number(duration ?? 0),
       is_active: is_active !== false,
       sort_order: Number(sort_order ?? 0),
     })
@@ -58,6 +59,7 @@ export async function PUT(req: NextRequest) {
       ...(updates.name != null ? { name: String(updates.name).trim() } : {}),
       ...(updates.description !== undefined ? { description: updates.description ? String(updates.description).trim() : null } : {}),
       ...(updates.price != null ? { price: Number(updates.price) } : {}),
+      ...(updates.duration != null ? { duration: Number(updates.duration) } : {}),
       ...(updates.is_active != null ? { is_active: Boolean(updates.is_active) } : {}),
       ...(updates.sort_order != null ? { sort_order: Number(updates.sort_order) } : {}),
     })

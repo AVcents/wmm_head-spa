@@ -6,7 +6,7 @@
 -- 1. Créer l'extra "15 minutes de massage" s'il n'existe pas
 INSERT INTO extras (id, name, description, price, is_active, sort_order)
 VALUES (
-  'extra-massage-15min'::uuid,
+  'extra-massage-15min',
   '15 minutes de massage supplémentaire',
   'Prolongez votre moment de détente avec 15 minutes de massage crânien',
   15.00,
@@ -25,7 +25,7 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO service_extras (service_id, extra_id, sort_order)
 SELECT
   s.id,
-  'extra-massage-15min'::uuid,
+  'extra-massage-15min',
   0
 FROM services s
 WHERE s.is_active = true
@@ -40,5 +40,5 @@ SELECT
 FROM service_extras se
 JOIN services s ON s.id = se.service_id
 JOIN extras e ON e.id = se.extra_id
-WHERE e.id = 'extra-massage-15min'::uuid
+WHERE e.id = 'extra-massage-15min'
 ORDER BY s.name;

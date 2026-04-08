@@ -466,21 +466,41 @@ flowchart TD
 
 **Flow** :
 1. Client entre sa CB
-2. Stripe bloque le montant (`requires_capture`)
+2. Stripe bloque **80% du montant** (`requires_capture`)
 3. Réservation créée avec `payment_mode: 'hold'`
-4. **À J-1 ou le jour J** : Admin capture ou annule
-   - Capture → Argent prélevé
-   - Annule → Argent libéré
+4. **À J-1 ou le jour J** : Admin capture via l'interface `/admin/reservations`
+   - **Capturer 100%** → Client venu, prélèvement du montant total
+   - **No-show (80%)** → Client absent, pénalité 80%
+   - **Annul. (30%)** → Annulation tardive, pénalité 30%
+   - **Libérer fonds** → Annulation sans pénalité, fonds débloqués
+
+**Métadonnées stockées** :
+```typescript
+metadata: {
+  type: 'reservation_hold',
+  fullPrice: String(totalAmount),       // Prix total en centimes
+  penalty30: String(amount * 0.30),     // 30% de pénalité
+  penalty80: String(amount * 0.80),     // 80% de pénalité (montant bloqué)
+}
+```
 
 **Code** :
 ```typescript
 const paymentIntent = await stripe.paymentIntents.create({
-  amount: totalCents,
+  amount: Math.round(totalAmount * 0.80 * 100), // 80% bloqué
   currency: 'eur',
   capture_method: 'manual',  // ← Empreinte
-  metadata: { bookingId, clientEmail }
+  metadata: { bookingId, clientEmail, penalty30, penalty80, fullPrice }
 })
 ```
+
+**Interface admin** :
+- Dans `/admin/reservations`, les réservations avec `payment_mode: 'hold'` affichent un badge "Empreinte bancaire en attente"
+- 4 boutons d'action :
+  - **Capturer 100%** : Client venu (capture le montant total)
+  - **No-show (80%)** : Client absent (capture 80% de pénalité)
+  - **Annul. (30%)** : Annulation tardive (capture 30% de pénalité)
+  - **Libérer fonds** : Annulation sans pénalité (libère les fonds)
 
 ### 2. Paiement direct
 
@@ -619,6 +639,7 @@ POST /api/admin/manual-booking
 | `/api/admin/service-extras` | GET, POST | Liaison service ↔ extras |
 | `/api/admin/bookings` | GET, POST | Liste + création manuelle |
 | `/api/admin/manual-booking` | GET, POST | Créneaux + résa sans paiement |
+| `/api/admin/capture-payment` | POST | Capture/annulation empreinte bancaire |
 | `/api/planning` | GET, POST, DELETE | Gestion planning hebdo |
 
 ### Exemple : Créneaux disponibles
@@ -640,6 +661,39 @@ Response 200:
   ]
 }
 ```
+
+### Exemple : Capture de paiement (empreinte bancaire)
+
+```bash
+POST /api/admin/capture-payment
+
+Body:
+{
+  "bookingId": "abc123-def456",
+  "captureType": "full" | "penalty_30" | "penalty_80" | "cancel"
+}
+
+Response 200 (succès):
+{
+  "success": true,
+  "message": "Paiement capturé : 85.00€",
+  "captured": true,
+  "amountCaptured": 85.00,
+  "newStatus": "confirmed",
+  "paymentIntentId": "pi_xxx"
+}
+
+Response 400 (erreur):
+{
+  "error": "Cette réservation n'a pas d'empreinte bancaire"
+}
+```
+
+**Types de capture** :
+- `full` : Capture 100% du prix (client venu) → statut `confirmed`
+- `penalty_30` : Capture 30% de pénalité (annulation tardive) → statut `cancelled`
+- `penalty_80` : Capture 80% de pénalité (no-show) → statut `no_show`
+- `cancel` : Annule le PaymentIntent et libère les fonds → statut `cancelled`
 
 ---
 

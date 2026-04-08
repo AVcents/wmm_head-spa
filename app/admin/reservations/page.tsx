@@ -17,6 +17,7 @@ import {
   Mail,
   Phone,
   MessageSquare,
+  DollarSign,
 } from 'lucide-react'
 import type { BookingRow } from '@/lib/supabase/types'
 
@@ -64,10 +65,11 @@ const STATUS_CLASSES: Record<string, string> = {
 
 // ─── Composant détail d'une réservation ───────────────────────────────────────
 
-function BookingDetail({ booking, onClose, onCancel }: {
+function BookingDetail({ booking, onClose, onCancel, onCapture }: {
   booking: BookingRow
   onClose: () => void
   onCancel: () => void
+  onCapture: (type: 'full' | 'penalty_30' | 'penalty_80' | 'cancel') => void
 }) {
   const rowClass   = 'flex items-start justify-between py-2.5 border-b border-border last:border-0'
   const labelClass = 'text-sm text-foreground-secondary flex items-center gap-1.5 min-w-0 shrink-0 w-36'
@@ -153,15 +155,72 @@ function BookingDetail({ booking, onClose, onCancel }: {
         </div>
       </div>
 
+      {/* Actions selon statut et mode de paiement */}
       {booking.status === 'confirmed' && (
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-5 flex items-center gap-2 text-sm text-error border border-error/20 hover:bg-error/10 px-4 py-2 rounded-xl transition-colors"
-        >
-          <X className="h-4 w-4" />
-          Annuler cette réservation
-        </button>
+        <div className="mt-5 space-y-3">
+          {/* Si empreinte bancaire → Options de capture */}
+          {booking.payment_mode === 'hold' && booking.payment_intent_id && (
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="h-4 w-4 text-warning" />
+                <span className="text-sm font-semibold text-warning">Empreinte bancaire en attente</span>
+              </div>
+              <p className="text-xs text-foreground-secondary mb-3">
+                Choisissez l'action à effectuer sur le paiement :
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onCapture('full')}
+                  className="flex items-center justify-center gap-2 text-sm text-success border border-success/20 hover:bg-success/10 px-3 py-2 rounded-lg transition-colors"
+                  title="Client venu → Capturer 100% du montant"
+                >
+                  <Check className="h-4 w-4" />
+                  Capturer 100%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCapture('penalty_80')}
+                  className="flex items-center justify-center gap-2 text-sm text-warning border border-warning/20 hover:bg-warning/10 px-3 py-2 rounded-lg transition-colors"
+                  title="No-show → Capturer 80% de pénalité"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  No-show (80%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCapture('penalty_30')}
+                  className="flex items-center justify-center gap-2 text-sm text-error border border-error/20 hover:bg-error/10 px-3 py-2 rounded-lg transition-colors"
+                  title="Annulation tardive → Capturer 30% de pénalité"
+                >
+                  <X className="h-4 w-4" />
+                  Annul. (30%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCapture('cancel')}
+                  className="flex items-center justify-center gap-2 text-sm text-foreground-muted border border-border hover:bg-surface px-3 py-2 rounded-lg transition-colors"
+                  title="Annuler sans pénalité → Libérer les fonds"
+                >
+                  <X className="h-4 w-4" />
+                  Libérer fonds
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Bouton annulation classique (pour autres modes de paiement) */}
+          {booking.payment_mode !== 'hold' && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center gap-2 text-sm text-error border border-error/20 hover:bg-error/10 px-4 py-2 rounded-xl transition-colors"
+            >
+              <X className="h-4 w-4" />
+              Annuler cette réservation
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -177,6 +236,7 @@ export default function AdminReservationsPage() {
   const [filter, setFilter]         = useState<Filter>('upcoming')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [capturing, setCapturing]   = useState<string | null>(null)
   const [toast, setToast]           = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -227,6 +287,32 @@ export default function AdminReservationsPage() {
       showToast('Impossible d\'annuler la réservation', 'error')
     } finally {
       setCancelling(null)
+    }
+  }
+
+  const handleCapture = async (id: string, captureType: 'full' | 'penalty_30' | 'penalty_80' | 'cancel') => {
+    setCapturing(id)
+    try {
+      const res = await fetch('/api/admin/capture-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id, captureType }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Erreur capture')
+      }
+
+      showToast(data.message ?? 'Paiement traité', 'success')
+      setExpandedId(null)
+      void fetchBookings(filter)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Impossible de traiter le paiement'
+      showToast(message, 'error')
+    } finally {
+      setCapturing(null)
     }
   }
 
@@ -343,14 +429,24 @@ export default function AdminReservationsPage() {
                       booking={b}
                       onClose={() => setExpandedId(null)}
                       onCancel={() => {
-                        if (cancelling) return
+                        if (cancelling || capturing) return
                         void handleCancel(b.id)
+                      }}
+                      onCapture={(type) => {
+                        if (cancelling || capturing) return
+                        void handleCapture(b.id, type)
                       }}
                     />
                     {cancelling === b.id && (
                       <div className="flex items-center gap-2 mt-3 text-sm text-foreground-secondary">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Annulation en cours…
+                      </div>
+                    )}
+                    {capturing === b.id && (
+                      <div className="flex items-center gap-2 mt-3 text-sm text-foreground-secondary">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Traitement du paiement en cours…
                       </div>
                     )}
                   </div>

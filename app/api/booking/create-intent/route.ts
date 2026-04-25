@@ -51,9 +51,11 @@ export async function POST(req: NextRequest) {
 
     // ===========================
     // Option 1 — Empreinte bancaire (hold)
+    // Hold à 100% du prix pour laisser toute la marge à l'admin
+    // (capture totale, pénalités 30%/80%, ou libération)
     // ===========================
     if (body.paymentMethod === 'hold') {
-      const holdAmount = Math.round(body.amount * 0.80 * 100) // 80% en centimes
+      const priceCents = Math.round(body.amount * 100)
 
       const customer = await stripe.customers.create({
         name:  body.clientName,
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
       })
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount:   holdAmount,
+        amount:   priceCents,
         currency: 'eur',
         customer: customer.id,
         capture_method: 'manual',
@@ -69,9 +71,9 @@ export async function POST(req: NextRequest) {
         metadata: {
           ...baseMeta,
           type:       'reservation_hold',
-          fullPrice:  String(body.amount),
+          fullPrice:  String(priceCents),
           penalty30:  String(Math.round(body.amount * 0.30 * 100)),
-          penalty80:  String(holdAmount),
+          penalty80:  String(Math.round(body.amount * 0.80 * 100)),
         },
       })
 

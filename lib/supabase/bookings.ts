@@ -160,6 +160,20 @@ export async function getBookingById(id: string): Promise<BookingRow | null> {
   return data as BookingRow
 }
 
+/** Récupère une réservation par PaymentIntent Stripe */
+export async function getBookingByPaymentIntent(paymentIntentId: string): Promise<BookingRow | null> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('payment_intent_id', paymentIntentId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data as BookingRow
+}
+
 // ─── Annulation ─────────────────────────────────────────────────
 
 export async function cancelBooking(id: string): Promise<boolean> {
@@ -189,7 +203,11 @@ export async function updateBookingStatus(
   const supabase = createAdminClient()
 
   const updates: Record<string, unknown> = { status }
-  if (status === 'cancelled') updates['cancelled_at'] = new Date().toISOString()
+  // Horodatage de sortie : cancelled_at sert aussi pour les no_show
+  // (pas de colonne dédiée, on réutilise pour la traçabilité)
+  if (status === 'cancelled' || status === 'no_show') {
+    updates['cancelled_at'] = new Date().toISOString()
+  }
 
   const { error } = await supabase
     .from('bookings')

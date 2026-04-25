@@ -9,9 +9,11 @@
 Lorsqu'un client réserve en ligne avec l'option **"Empreinte bancaire (paiement sur place)"**, voici ce qui se passe :
 
 1. Le client entre sa carte bancaire
-2. Stripe **bloque 80% du montant total** (mais ne le prélève pas encore)
+2. Stripe **bloque 100% du montant total** (mais ne le prélève pas encore)
 3. La réservation est créée avec le statut "Confirmée"
 4. **Vous devez ensuite décider** quoi faire de ce montant bloqué
+
+> **À noter :** le montant est bloqué mais **pas débité**. Si le client vient et paie en salon (CB, espèces), il vous suffit de **libérer les fonds** pour qu'aucun prélèvement ne soit effectué côté Stripe.
 
 ---
 
@@ -46,7 +48,7 @@ Si la réservation a une empreinte bancaire en attente, vous verrez **4 boutons 
 
 **Exemple :**
 - Prestation : 85€
-- Montant bloqué : 68€ (80%)
+- Montant bloqué : 85€ (100%)
 - Montant capturé : **85€** (100%)
 
 ---
@@ -197,7 +199,7 @@ Après **7 jours**, Stripe libère automatiquement les fonds. Le client ne paie 
 
 ### Peut-on capturer plus que le montant bloqué ?
 
-**Oui.** Le montant bloqué est de 80%, mais vous pouvez capturer 100% si le client s'est présenté. Stripe autorise jusqu'à 115% du montant bloqué.
+**Non.** Le montant bloqué correspond à 100% du prix de la prestation. Toute capture est effectuée dans la limite de ce montant.
 
 ### Le client reçoit-il une notification ?
 

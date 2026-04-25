@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { sendGiftCardEmails } from '@/lib/email'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getBookingByPaymentIntent, updateBookingStatus } from '@/lib/supabase/bookings'
 import type { GiftCardEmailData } from '@/lib/email'
 
 // Désactiver le body parsing automatique — Stripe a besoin du raw body pour vérifier la signature
@@ -25,11 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  // ─── Bons cadeaux : envoi email + persistance ─────────────────────
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object
     const meta = pi.metadata ?? {}
 
-    // Ne traiter que les bons cadeau
     if (meta['type'] !== 'gift_card') {
       return NextResponse.json({ received: true })
     }
@@ -90,6 +91,39 @@ export async function POST(req: NextRequest) {
       // Retourner 500 pour que Stripe réessaie
       return NextResponse.json({ error: 'Email sending failed' }, { status: 500 })
     }
+
+    return NextResponse.json({ received: true })
+  }
+
+  // ─── Empreintes bancaires : synchroniser l'état Supabase ──────────
+  // Cas : PaymentIntent annulé côté Stripe (timeout 7j, cancel manuel, etc.)
+  if (event.type === 'payment_intent.canceled') {
+    const pi = event.data.object
+    try {
+      const booking = await getBookingByPaymentIntent(pi.id)
+      if (booking && booking.status === 'confirmed') {
+        await updateBookingStatus(booking.id, 'cancelled')
+        console.log('[webhook] Booking cancelled (PI canceled):', booking.id)
+      }
+    } catch (err) {
+      console.error('[webhook] Failed to sync canceled PI:', err)
+    }
+    return NextResponse.json({ received: true })
+  }
+
+  // Cas : paiement échoué (3DS refusé après coup, carte refusée, etc.)
+  if (event.type === 'payment_intent.payment_failed') {
+    const pi = event.data.object
+    try {
+      const booking = await getBookingByPaymentIntent(pi.id)
+      if (booking && booking.status === 'confirmed') {
+        await updateBookingStatus(booking.id, 'cancelled')
+        console.warn('[webhook] Booking cancelled (payment failed):', booking.id, pi.last_payment_error?.message)
+      }
+    } catch (err) {
+      console.error('[webhook] Failed to sync failed PI:', err)
+    }
+    return NextResponse.json({ received: true })
   }
 
   return NextResponse.json({ received: true })

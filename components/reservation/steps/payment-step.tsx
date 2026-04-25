@@ -497,7 +497,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                 </span>
               </div>
               <p className="text-sm text-foreground-secondary mt-1">
-                Votre carte ne sera pas débitée. Vous payez en salon le jour du rendez-vous.
+                Le montant total est temporairement bloqué sur votre carte mais rien n&apos;est débité. Vous réglez en salon le jour du rendez-vous.
               </p>
               {selectedMode === 'hold' && (
                 <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30">
@@ -689,11 +689,9 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
               >
                 <StripeCheckoutForm
                   amount={
-                    selectedMode === 'hold'
-                      ? Math.round(totalPrice * 0.80)
-                      : selectedMode === 'gift_card'
-                        ? (remainingAmount ?? 0)
-                        : totalPrice
+                    selectedMode === 'gift_card'
+                      ? (remainingAmount ?? 0)
+                      : totalPrice
                   }
                   buttonLabel={
                     selectedMode === 'hold'

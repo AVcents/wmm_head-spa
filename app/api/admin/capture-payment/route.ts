@@ -15,6 +15,16 @@ function errorJson(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status })
 }
 
+// Les metadata ont pu être stockées en euros (anciens PI) ou en centimes
+// (format actuel). Un nombre < 500 correspond forcément à des euros — un prix
+// Head Spa plancher dépasse largement 5€.
+function metaToCents(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback
+  const n = parseFloat(raw)
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return n < 500 ? Math.round(n * 100) : Math.round(n)
+}
+
 // ─── Route ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -25,13 +35,11 @@ export async function POST(req: NextRequest) {
       return errorJson('bookingId et captureType requis')
     }
 
-    // Récupérer la réservation
     const booking = await getBookingById(body.bookingId)
     if (!booking) {
       return errorJson('Réservation introuvable', 404)
     }
 
-    // Vérifier que c'est bien une empreinte bancaire
     if (booking.payment_mode !== 'hold') {
       return errorJson('Cette réservation n\'a pas d\'empreinte bancaire')
     }
@@ -43,7 +51,6 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe()
     const paymentIntent = await stripe.paymentIntents.retrieve(booking.payment_intent_id)
 
-    // Vérifier le statut
     if (paymentIntent.status !== 'requires_capture') {
       return errorJson(
         `Impossible de capturer : statut actuel = ${paymentIntent.status}`,
@@ -69,30 +76,27 @@ export async function POST(req: NextRequest) {
     // Option 2, 3, 4 : Capturer tout ou partie
     // ═══════════════════════════════════════════════════════════════
 
-    const originalAmount = paymentIntent.amount // En centimes
-    const metadata = paymentIntent.metadata ?? {}
-    const fullPrice = parseFloat(metadata['fullPrice'] ?? '0') * 100 // En centimes
-    const penalty30 = parseFloat(metadata['penalty30'] ?? '0')
-    const penalty80 = parseFloat(metadata['penalty80'] ?? '0')
+    const holdAmount = paymentIntent.amount // centimes autorisés, borne max
+    const metadata   = paymentIntent.metadata ?? {}
+    const fullPrice  = metaToCents(metadata['fullPrice'], holdAmount)
+    const penalty30  = metaToCents(metadata['penalty30'], Math.round(fullPrice * 0.30))
+    const penalty80  = metaToCents(metadata['penalty80'], Math.round(fullPrice * 0.80))
 
-    let amountToCapture = originalAmount
-    let newStatus: 'confirmed' | 'cancelled' | 'no_show' = 'confirmed'
+    let amountToCapture: number
+    let newStatus: 'confirmed' | 'cancelled' | 'no_show'
 
     switch (body.captureType) {
       case 'full':
-        // Capturer 100% du prix (le client est venu)
         amountToCapture = fullPrice
         newStatus = 'confirmed'
         break
 
       case 'penalty_30':
-        // Annulation tardive → 30% de pénalité
         amountToCapture = penalty30
         newStatus = 'cancelled'
         break
 
       case 'penalty_80':
-        // No-show → 80% de pénalité
         amountToCapture = penalty80
         newStatus = 'no_show'
         break
@@ -101,12 +105,18 @@ export async function POST(req: NextRequest) {
         return errorJson('Type de capture invalide')
     }
 
-    // Capturer le montant
+    // Ne jamais dépasser le montant autorisé — évite amount_too_large
+    // (rétrocompat pour anciens PI qui autorisaient seulement 80%)
+    amountToCapture = Math.min(amountToCapture, holdAmount)
+
+    if (amountToCapture < 50) {
+      return errorJson('Montant à capturer inférieur au minimum Stripe (0,50€)')
+    }
+
     const captured = await stripe.paymentIntents.capture(paymentIntent.id, {
-      amount_to_capture: Math.round(amountToCapture),
+      amount_to_capture: amountToCapture,
     })
 
-    // Mettre à jour le statut de la réservation
     await updateBookingStatus(booking.id, newStatus)
 
     return NextResponse.json({

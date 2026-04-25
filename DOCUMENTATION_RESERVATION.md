@@ -466,7 +466,7 @@ flowchart TD
 
 **Flow** :
 1. Client entre sa CB
-2. Stripe bloque **80% du montant** (`requires_capture`)
+2. Stripe bloque **100% du montant** (`requires_capture`) — fonds bloqués mais non débités
 3. Réservation créée avec `payment_mode: 'hold'`
 4. **À J-1 ou le jour J** : Admin capture via l'interface `/admin/reservations`
    - **Capturer 100%** → Client venu, prélèvement du montant total
@@ -474,25 +474,27 @@ flowchart TD
    - **Annul. (30%)** → Annulation tardive, pénalité 30%
    - **Libérer fonds** → Annulation sans pénalité, fonds débloqués
 
-**Métadonnées stockées** :
+**Métadonnées stockées** (toutes en centimes) :
 ```typescript
 metadata: {
   type: 'reservation_hold',
-  fullPrice: String(totalAmount),       // Prix total en centimes
-  penalty30: String(amount * 0.30),     // 30% de pénalité
-  penalty80: String(amount * 0.80),     // 80% de pénalité (montant bloqué)
+  fullPrice: String(priceCents),                          // 100% en centimes
+  penalty30: String(Math.round(amount * 0.30 * 100)),     // 30% en centimes
+  penalty80: String(Math.round(amount * 0.80 * 100)),     // 80% en centimes
 }
 ```
 
 **Code** :
 ```typescript
 const paymentIntent = await stripe.paymentIntents.create({
-  amount: Math.round(totalAmount * 0.80 * 100), // 80% bloqué
+  amount: Math.round(amount * 100), // 100% bloqué (non débité)
   currency: 'eur',
   capture_method: 'manual',  // ← Empreinte
-  metadata: { bookingId, clientEmail, penalty30, penalty80, fullPrice }
+  metadata: { fullPrice, penalty30, penalty80 /* + base meta */ }
 })
 ```
+
+**Important** : la capture est plafonnée à `pi.amount` côté serveur (`amountToCapture = min(metadata, pi.amount)`) pour éviter les erreurs `amount_too_large`, notamment sur d'anciens PI créés quand le hold valait 80%.
 
 **Interface admin** :
 - Dans `/admin/reservations`, les réservations avec `payment_mode: 'hold'` affichent un badge "Empreinte bancaire en attente"

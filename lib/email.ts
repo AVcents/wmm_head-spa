@@ -53,6 +53,18 @@ export interface BookingEmailData {
 // -----------------------------------------------
 // Helpers
 // -----------------------------------------------
+
+/** Échappe les entrées utilisateur avant insertion dans un template HTML email */
+function esc(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function formatDateFr(isoString: string): string {
   return new Date(isoString).toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -75,9 +87,9 @@ function formatTimeFr(isoString: string): string {
 // Template client : confirmation de réservation
 // -----------------------------------------------
 function buildClientHtml(d: BookingEmailData): string {
-  const serviceDisplay = d.variantLabel
-    ? `${d.serviceName} — ${d.variantLabel}`
-    : d.serviceName
+  const serviceDisplay = esc(
+    d.variantLabel ? `${d.serviceName} — ${d.variantLabel}` : d.serviceName
+  )
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -109,7 +121,7 @@ function buildClientHtml(d: BookingEmailData): string {
 
               <!-- Salutation -->
               <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:18px;color:${C.text};">
-                Bonjour <strong>${d.clientName}</strong>,
+                Bonjour <strong>${esc(d.clientName)}</strong>,
               </p>
               <p style="margin:0 0 32px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${C.textMuted};">
                 Votre réservation a bien été enregistrée. Nous avons hâte de vous accueillir dans notre espace de bien-être.
@@ -157,41 +169,43 @@ function buildClientHtml(d: BookingEmailData): string {
 
                     <div style="height:1px;background-color:${C.border};margin:14px 0;"></div>
 
-                    <!-- Prix -->
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Prestation</td>
-                        <td style="font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${C.text};text-align:right;">${d.price}&nbsp;€</td>
-                      </tr>
-                    </table>
-
-                    ${d.extras && d.extras.length > 0 ? d.extras.map(e => `
+                    ${(() => {
+                      // d.price = total reçu du wizard (déjà inclut les extras).
+                      // On déduit les extras pour afficher correctement la prestation seule.
+                      const extrasSum = (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)
+                      const baseService = Math.max(0, d.price - extrasSum)
+                      const total = d.price
+                      const extrasRows = (d.extras ?? []).map(e => `
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
                       <tr>
                         <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">+ ${e.name}</td>
                         <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};text-align:right;">+${Number(e.price).toFixed(2)}&nbsp;€</td>
                       </tr>
-                    </table>`).join('') + `
+                    </table>`).join('')
+                      return `
+                    <!-- Prestation -->
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Prestation</td>
+                        <td style="font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${C.text};text-align:right;">${baseService}&nbsp;€</td>
+                      </tr>
+                    </table>
+                    ${extrasRows}
                     <div style="height:1px;background-color:${C.border};margin:10px 0;"></div>
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${C.text};">Total</td>
-                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${d.price + (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)}&nbsp;€</td>
+                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${total}&nbsp;€</td>
                       </tr>
-                    </table>` : `
-                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
-                      <tr>
-                        <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Total</td>
-                        <td style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${C.primary};text-align:right;">${d.price}&nbsp;€</td>
-                      </tr>
-                    </table>`}
+                    </table>`
+                    })()}
 
                     ${d.giftCardCode ? `
                     <div style="height:1px;background-color:${C.border};margin:14px 0;"></div>
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">Bon cadeau</td>
-                        <td style="font-family:Arial,sans-serif;font-size:13px;font-weight:600;color:${C.success};text-align:right;">${d.giftCardCode}</td>
+                        <td style="font-family:Arial,sans-serif;font-size:13px;font-weight:600;color:${C.success};text-align:right;">${esc(d.giftCardCode)}</td>
                       </tr>
                     </table>
                     ` : ''}
@@ -223,7 +237,7 @@ function buildClientHtml(d: BookingEmailData): string {
                 <tr>
                   <td style="padding:20px 24px;">
                     <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.textMuted};">Votre message</p>
-                    <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:${C.text};font-style:italic;">"${d.message}"</p>
+                    <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:${C.text};font-style:italic;">"${esc(d.message)}"</p>
                   </td>
                 </tr>
               </table>
@@ -273,9 +287,9 @@ function buildClientHtml(d: BookingEmailData): string {
 // Template salon : notification nouvelle réservation
 // -----------------------------------------------
 function buildSalonHtml(d: BookingEmailData): string {
-  const serviceDisplay = d.variantLabel
-    ? `${d.serviceName} — ${d.variantLabel}`
-    : d.serviceName
+  const serviceDisplay = esc(
+    d.variantLabel ? `${d.serviceName} — ${d.variantLabel}` : d.serviceName
+  )
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -312,19 +326,19 @@ function buildSalonHtml(d: BookingEmailData): string {
                   <table width="100%" cellpadding="0" cellspacing="6">
                     <tr>
                       <td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Nom</td>
-                      <td style="font-size:14px;font-weight:600;color:${C.text};padding:3px 0;">${d.clientName}</td>
+                      <td style="font-size:14px;font-weight:600;color:${C.text};padding:3px 0;">${esc(d.clientName)}</td>
                     </tr>
                     <tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Email</td>
-                      <td style="font-size:14px;color:${C.text};padding:3px 0;"><a href="mailto:${d.clientEmail}" style="color:${C.primary};text-decoration:none;">${d.clientEmail}</a></td>
+                      <td style="font-size:14px;color:${C.text};padding:3px 0;"><a href="mailto:${esc(d.clientEmail)}" style="color:${C.primary};text-decoration:none;">${esc(d.clientEmail)}</a></td>
                     </tr>
                     <tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Téléphone</td>
-                      <td style="font-size:14px;color:${C.text};padding:3px 0;"><a href="tel:${d.clientPhone}" style="color:${C.primary};text-decoration:none;">${d.clientPhone}</a></td>
+                      <td style="font-size:14px;color:${C.text};padding:3px 0;"><a href="tel:${esc(d.clientPhone)}" style="color:${C.primary};text-decoration:none;">${esc(d.clientPhone)}</a></td>
                     </tr>
                     ${d.message ? `<tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;vertical-align:top;">Message</td>
-                      <td style="font-size:13px;color:${C.text};font-style:italic;padding:3px 0;">"${d.message}"</td>
+                      <td style="font-size:13px;color:${C.text};font-style:italic;padding:3px 0;">"${esc(d.message)}"</td>
                     </tr>` : ''}
                   </table>
                 </td></tr>
@@ -343,23 +357,27 @@ function buildSalonHtml(d: BookingEmailData): string {
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Durée</td>
                       <td style="font-size:14px;color:${C.text};padding:3px 0;">${d.duration} min</td>
                     </tr>
-                    <tr>
-                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Prestation</td>
-                      <td style="font-size:14px;font-weight:600;color:${C.text};padding:3px 0;">${d.price} €</td>
-                    </tr>
-                    ${d.extras && d.extras.length > 0 ? d.extras.map(e => `<tr>
+                    ${(() => {
+                      // d.price = total (déjà inclut extras). On déduit pour afficher la presta seule.
+                      const extrasSum = (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)
+                      const baseService = Math.max(0, d.price - extrasSum)
+                      const extrasRows = (d.extras ?? []).map(e => `<tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">+ ${e.name}</td>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">+${Number(e.price).toFixed(2)} €</td>
-                    </tr>`).join('') + `<tr>
+                    </tr>`).join('')
+                      return `<tr>
+                      <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Prestation</td>
+                      <td style="font-size:14px;font-weight:600;color:${C.text};padding:3px 0;">${baseService} €</td>
+                    </tr>
+                    ${extrasRows}
+                    <tr>
                       <td style="font-size:13px;font-weight:700;color:${C.text};padding:3px 0;border-top:1px solid ${C.border};">Total</td>
-                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;border-top:1px solid ${C.border};">${d.price + (d.extras ?? []).reduce((s, e) => s + Number(e.price), 0)} €</td>
-                    </tr>` : `<tr>
-                      <td style="font-size:13px;font-weight:700;color:${C.text};padding:3px 0;">Total</td>
-                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;">${d.price} €</td>
-                    </tr>`}
+                      <td style="font-size:16px;font-weight:700;color:${C.primary};padding:3px 0;border-top:1px solid ${C.border};">${d.price} €</td>
+                    </tr>`
+                    })()}
                     ${d.giftCardCode ? `<tr>
                       <td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Bon cadeau</td>
-                      <td style="font-size:13px;color:${C.success};font-weight:600;padding:3px 0;">${d.giftCardCode}</td>
+                      <td style="font-size:13px;color:${C.success};font-weight:600;padding:3px 0;">${esc(d.giftCardCode)}</td>
                     </tr>` : ''}
                   </table>
                 </td></tr>
@@ -415,9 +433,9 @@ export interface GiftCardEmailData {
 }
 
 function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
-  const serviceDisplay = d.hairLengthLabel
-    ? `${d.serviceName} — ${d.hairLengthLabel}`
-    : d.serviceName
+  const serviceDisplay = esc(
+    d.hairLengthLabel ? `${d.serviceName} — ${d.hairLengthLabel}` : d.serviceName
+  )
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -440,12 +458,12 @@ function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
         <tr>
           <td style="background-color:${C.surface};padding:40px;">
             <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:18px;color:${C.text};">
-              Bonjour <strong>${d.buyerFirstName}</strong>,
+              Bonjour <strong>${esc(d.buyerFirstName)}</strong>,
             </p>
             <p style="margin:0 0 32px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${C.textMuted};">
               Merci pour votre achat ! Votre bon cadeau a bien été créé et envoyé à
-              <strong>${d.recipientFirstName} ${d.recipientLastName}</strong>
-              ${d.deliveryMethod === 'digital' ? `à l'adresse <strong>${d.recipientEmail}</strong>` : 'par courrier'}.
+              <strong>${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</strong>
+              ${d.deliveryMethod === 'digital' ? `à l'adresse <strong>${esc(d.recipientEmail)}</strong>` : 'par courrier'}.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.primaryLight};border-radius:12px;margin-bottom:32px;">
@@ -461,7 +479,7 @@ function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
                   </tr>
                   <tr>
                     <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};padding:4px 0;">Destinataire</td>
-                    <td style="font-family:Arial,sans-serif;font-size:14px;color:${C.text};text-align:right;padding:4px 0;">${d.recipientFirstName} ${d.recipientLastName}</td>
+                    <td style="font-family:Arial,sans-serif;font-size:14px;color:${C.text};text-align:right;padding:4px 0;">${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</td>
                   </tr>
                   <tr>
                     <td colspan="2" style="height:1px;background-color:${C.border};padding:0;"></td>
@@ -475,7 +493,7 @@ function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
                   </tr>
                   <tr>
                     <td style="font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};padding:4px 0;">Code</td>
-                    <td style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:${C.primaryDark};text-align:right;letter-spacing:2px;padding:4px 0;">${d.giftCardCode}</td>
+                    <td style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:${C.primaryDark};text-align:right;letter-spacing:2px;padding:4px 0;">${esc(d.giftCardCode)}</td>
                   </tr>
                 </table>
               </td></tr>
@@ -503,10 +521,10 @@ function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
 }
 
 function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
-  const serviceDisplay = d.hairLengthLabel
-    ? `${d.serviceName} — ${d.hairLengthLabel}`
-    : d.serviceName
-  const fromName = d.senderName || `${d.buyerFirstName} ${d.buyerLastName}`
+  const serviceDisplay = esc(
+    d.hairLengthLabel ? `${d.serviceName} — ${d.hairLengthLabel}` : d.serviceName
+  )
+  const fromName = esc(d.senderName || `${d.buyerFirstName} ${d.buyerLastName}`)
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -529,7 +547,7 @@ function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
         <tr>
           <td style="background-color:${C.surface};padding:40px;">
             <p style="margin:0 0 24px;font-family:Georgia,serif;font-size:18px;color:${C.text};">
-              Bonjour <strong>${d.recipientFirstName}</strong>,
+              Bonjour <strong>${esc(d.recipientFirstName)}</strong>,
             </p>
             <p style="margin:0 0 16px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${C.textMuted};">
               <strong>${fromName}</strong> vous a offert un bon cadeau chez Kalm Headspa !
@@ -539,7 +557,7 @@ function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:12px;margin-bottom:28px;">
               <tr><td style="padding:20px 24px;">
                 <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.textMuted};">Message</p>
-                <p style="margin:0;font-family:Georgia,serif;font-size:16px;line-height:1.7;color:${C.text};font-style:italic;">&ldquo;${d.personalMessage}&rdquo;</p>
+                <p style="margin:0;font-family:Georgia,serif;font-size:16px;line-height:1.7;color:${C.text};font-style:italic;">&ldquo;${esc(d.personalMessage)}&rdquo;</p>
               </td></tr>
             </table>
             ` : ''}
@@ -551,7 +569,7 @@ function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
                 <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:22px;color:${C.text};font-weight:bold;">${serviceDisplay}</p>
                 <p style="margin:0 0 20px;font-family:Georgia,serif;font-size:40px;font-weight:bold;color:${C.primary};">${d.giftAmount}&nbsp;€</p>
                 <div style="display:inline-block;background-color:${C.primaryDark};color:#ffffff;font-family:Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:4px;padding:12px 28px;border-radius:8px;">
-                  ${d.giftCardCode}
+                  ${esc(d.giftCardCode)}
                 </div>
                 <p style="margin:16px 0 0;font-family:Arial,sans-serif;font-size:12px;color:${C.textMuted};">Présentez ce code lors de votre réservation</p>
               </td></tr>
@@ -595,9 +613,9 @@ function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
 }
 
 function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
-  const serviceDisplay = d.hairLengthLabel
-    ? `${d.serviceName} — ${d.hairLengthLabel}`
-    : d.serviceName
+  const serviceDisplay = esc(
+    d.hairLengthLabel ? `${d.serviceName} — ${d.hairLengthLabel}` : d.serviceName
+  )
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -618,9 +636,9 @@ function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
               <tr><td style="padding:20px 24px;">
                 <p style="margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.textMuted};">Acheteur</p>
                 <table width="100%" cellpadding="0" cellspacing="6">
-                  <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Nom</td><td style="font-size:14px;font-weight:600;color:${C.text};">${d.buyerFirstName} ${d.buyerLastName}</td></tr>
-                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Email</td><td style="font-size:14px;color:${C.text};"><a href="mailto:${d.buyerEmail}" style="color:${C.primary};text-decoration:none;">${d.buyerEmail}</a></td></tr>
-                  ${d.buyerPhone ? `<tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Tél.</td><td style="font-size:14px;color:${C.text};">${d.buyerPhone}</td></tr>` : ''}
+                  <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Nom</td><td style="font-size:14px;font-weight:600;color:${C.text};">${esc(d.buyerFirstName)} ${esc(d.buyerLastName)}</td></tr>
+                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Email</td><td style="font-size:14px;color:${C.text};"><a href="mailto:${esc(d.buyerEmail)}" style="color:${C.primary};text-decoration:none;">${esc(d.buyerEmail)}</a></td></tr>
+                  ${d.buyerPhone ? `<tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Tél.</td><td style="font-size:14px;color:${C.text};">${esc(d.buyerPhone)}</td></tr>` : ''}
                 </table>
               </td></tr>
             </table>
@@ -628,8 +646,8 @@ function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
               <tr><td style="padding:20px 24px;">
                 <p style="margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.textMuted};">Destinataire</p>
                 <table width="100%" cellpadding="0" cellspacing="6">
-                  <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Nom</td><td style="font-size:14px;font-weight:600;color:${C.text};">${d.recipientFirstName} ${d.recipientLastName}</td></tr>
-                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Email</td><td style="font-size:14px;color:${C.text};"><a href="mailto:${d.recipientEmail}" style="color:${C.primary};text-decoration:none;">${d.recipientEmail}</a></td></tr>
+                  <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Nom</td><td style="font-size:14px;font-weight:600;color:${C.text};">${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</td></tr>
+                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Email</td><td style="font-size:14px;color:${C.text};"><a href="mailto:${esc(d.recipientEmail)}" style="color:${C.primary};text-decoration:none;">${esc(d.recipientEmail)}</a></td></tr>
                 </table>
               </td></tr>
             </table>
@@ -640,7 +658,7 @@ function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
                   <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Prestation</td><td style="font-size:14px;font-weight:700;color:${C.text};">${serviceDisplay}</td></tr>
                   <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Montant</td><td style="font-size:16px;font-weight:700;color:${C.primary};">${d.giftAmount} €</td></tr>
                   <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Total encaissé</td><td style="font-size:16px;font-weight:700;color:${C.primaryDark};">${d.totalAmount} €</td></tr>
-                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Code</td><td style="font-size:16px;font-weight:700;color:${C.primaryDark};letter-spacing:2px;">${d.giftCardCode}</td></tr>
+                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Code</td><td style="font-size:16px;font-weight:700;color:${C.primaryDark};letter-spacing:2px;">${esc(d.giftCardCode)}</td></tr>
                   <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Livraison</td><td style="font-size:14px;color:${C.text};">${d.deliveryMethod === 'digital' ? 'Numérique' : 'Courrier'}</td></tr>
                 </table>
               </td></tr>

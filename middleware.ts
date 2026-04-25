@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { verifyAdminToken } from '@/lib/auth-edge'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const session = request.cookies.get('kalm-admin-session')
-  const authenticated = session?.value?.startsWith('kalm_') ?? false
+  const authenticated = await verifyAdminToken(session?.value)
 
   if (pathname.startsWith('/api/admin')) {
     if (!authenticated) {

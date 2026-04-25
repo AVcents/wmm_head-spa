@@ -35,6 +35,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
+    // Idempotence : si un bon cadeau existe déjà pour ce PaymentIntent,
+    // on a déjà traité cet event (Stripe peut retry)
+    try {
+      const supabase = createAdminClient()
+      const { data: existing } = await supabase
+        .from('gift_cards')
+        .select('id')
+        .eq('payment_intent_id', pi.id)
+        .maybeSingle()
+      if (existing) {
+        console.log('[webhook] Gift card déjà créée pour PI', pi.id, '— skip')
+        return NextResponse.json({ received: true })
+      }
+    } catch (err) {
+      console.error('[webhook] idempotence check failed:', err)
+      // En cas d'erreur, on continue plutôt que de bloquer
+    }
+
     try {
       const giftAmount = parseFloat(meta['giftAmount'] ?? '0')
       const deliveryFee = parseFloat(meta['deliveryFee'] ?? '0')

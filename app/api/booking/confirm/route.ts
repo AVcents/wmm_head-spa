@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createBooking } from '@/lib/supabase/bookings'
+import { createBooking, getBookingByPaymentIntent } from '@/lib/supabase/bookings'
 import { invalidateSlotsCache } from '@/lib/data'
 import { sendBookingEmails } from '@/lib/email'
 
@@ -92,6 +92,21 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
+
+      // Vérifier que le prix annoncé par le client correspond au montant Stripe
+      // Empêche la manipulation de body.price entre le wizard et la confirm
+      const expectedCents = Math.round((body.price ?? 0) * 100)
+      if (pi.amount !== expectedCents) {
+        console.error(
+          '[confirm] Prix incohérent — pi.amount:', pi.amount,
+          '/ body.price (cts):', expectedCents,
+          '/ pi:', pi.id
+        )
+        return NextResponse.json(
+          { error: 'Prix de réservation incohérent avec le paiement' },
+          { status: 400 }
+        )
+      }
     }
 
     if (body.paymentMode === 'gift_card') {
@@ -135,7 +150,18 @@ export async function POST(req: NextRequest) {
     )
 
     // ===========================
-    // 3. Créer la réservation dans Supabase
+    // 3. Idempotence : si le wizard est retry, ne pas dupliquer
+    // ===========================
+
+    if (body.paymentIntentId) {
+      const existing = await getBookingByPaymentIntent(body.paymentIntentId)
+      if (existing) {
+        return NextResponse.json({ bookingId: existing.id })
+      }
+    }
+
+    // ===========================
+    // 4. Créer la réservation dans Supabase
     // ===========================
 
     // Construire les données en omettant les propriétés undefined

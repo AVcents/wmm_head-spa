@@ -419,14 +419,25 @@ export interface GiftCardEmailData {
   recipientEmail: string
   recipientFirstName: string
   recipientLastName: string
+  recipientPhone?: string
   // Service
   serviceName: string
   hairLengthLabel?: string
+  // Extras (options ajoutées au bon)
+  extras?: Array<{ name: string; price: number }>
   // Montants
-  giftAmount: number      // montant du bon (hors livraison)
+  giftAmount: number      // montant du bon (prestation + extras, hors livraison)
   deliveryFee: number
   totalAmount: number
   deliveryMethod: 'digital' | 'physical'
+  // Livraison papier
+  shippingTo?: 'recipient' | 'buyer'
+  shippingAddress?: {
+    street: string
+    city: string
+    postalCode: string
+    country: string
+  }
   // Message
   senderName?: string
   personalMessage?: string
@@ -461,9 +472,10 @@ function buildGiftCardBuyerHtml(d: GiftCardEmailData): string {
               Bonjour <strong>${esc(d.buyerFirstName)}</strong>,
             </p>
             <p style="margin:0 0 32px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${C.textMuted};">
-              Merci pour votre achat ! Votre bon cadeau a bien été créé et envoyé à
-              <strong>${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</strong>
-              ${d.deliveryMethod === 'digital' ? `à l'adresse <strong>${esc(d.recipientEmail)}</strong>` : 'par courrier'}.
+              Merci pour votre achat ! Votre bon cadeau a bien été créé
+              ${d.deliveryMethod === 'digital'
+                ? `et envoyé à <strong>${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</strong> à l'adresse <strong>${esc(d.recipientEmail)}</strong>`
+                : `pour <strong>${esc(d.recipientFirstName)} ${esc(d.recipientLastName)}</strong> et sera expédié par courrier sous 2-3 jours ouvrés`}.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.primaryLight};border-radius:12px;margin-bottom:32px;">
@@ -566,7 +578,8 @@ function buildGiftCardRecipientHtml(d: GiftCardEmailData): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,${C.primaryLight} 0%,#f9f0ea 100%);border:2px solid ${C.primary};border-radius:16px;margin-bottom:32px;">
               <tr><td style="padding:32px;text-align:center;">
                 <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${C.primary};">Bon cadeau</p>
-                <p style="margin:0 0 16px;font-family:Georgia,serif;font-size:22px;color:${C.text};font-weight:bold;">${serviceDisplay}</p>
+                <p style="margin:0 0 ${(d.extras ?? []).length ? '8' : '16'}px;font-family:Georgia,serif;font-size:22px;color:${C.text};font-weight:bold;">${serviceDisplay}</p>
+                ${(d.extras ?? []).length ? `<p style="margin:0 0 16px;font-family:Arial,sans-serif;font-size:13px;color:${C.textMuted};">+ ${(d.extras ?? []).map(e => esc(e.name)).join(' · ')}</p>` : ''}
                 <p style="margin:0 0 20px;font-family:Georgia,serif;font-size:40px;font-weight:bold;color:${C.primary};">${d.giftAmount}&nbsp;€</p>
                 <div style="display:inline-block;background-color:${C.primaryDark};color:#ffffff;font-family:Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:4px;padding:12px 28px;border-radius:8px;">
                   ${esc(d.giftCardCode)}
@@ -656,13 +669,29 @@ function buildGiftCardSalonHtml(d: GiftCardEmailData): string {
                 <p style="margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.primary};">Bon cadeau</p>
                 <table width="100%" cellpadding="0" cellspacing="6">
                   <tr><td style="font-size:13px;color:${C.textMuted};width:35%;padding:3px 0;">Prestation</td><td style="font-size:14px;font-weight:700;color:${C.text};">${serviceDisplay}</td></tr>
-                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Montant</td><td style="font-size:16px;font-weight:700;color:${C.primary};">${d.giftAmount} €</td></tr>
+                  ${(d.extras ?? []).map(e => `<tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">+ ${esc(e.name)}</td><td style="font-size:13px;color:${C.textMuted};">+${Number(e.price).toFixed(2)} €</td></tr>`).join('')}
+                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Montant du bon</td><td style="font-size:16px;font-weight:700;color:${C.primary};">${d.giftAmount} €</td></tr>
+                  ${d.deliveryFee > 0 ? `<tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Frais de livraison</td><td style="font-size:14px;color:${C.text};">${d.deliveryFee} €</td></tr>` : ''}
                   <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Total encaissé</td><td style="font-size:16px;font-weight:700;color:${C.primaryDark};">${d.totalAmount} €</td></tr>
                   <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Code</td><td style="font-size:16px;font-weight:700;color:${C.primaryDark};letter-spacing:2px;">${esc(d.giftCardCode)}</td></tr>
-                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Livraison</td><td style="font-size:14px;color:${C.text};">${d.deliveryMethod === 'digital' ? 'Numérique' : 'Courrier'}</td></tr>
+                  <tr><td style="font-size:13px;color:${C.textMuted};padding:3px 0;">Livraison</td><td style="font-size:14px;color:${C.text};">${d.deliveryMethod === 'digital' ? 'Numérique (email)' : 'Courrier postal'}</td></tr>
                 </table>
               </td></tr>
             </table>
+            ${d.deliveryMethod === 'physical' && d.shippingAddress ? `
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff8f3;border:2px solid ${C.primary};border-radius:10px;margin-bottom:20px;">
+              <tr><td style="padding:20px 24px;">
+                <p style="margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.primary};">📮 Adresse d'expédition</p>
+                <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:${C.text};">${esc(d.shippingTo === 'buyer' ? `${d.buyerFirstName} ${d.buyerLastName}` : `${d.recipientFirstName} ${d.recipientLastName}`)}</p>
+                <p style="margin:0;font-size:14px;color:${C.text};line-height:1.6;">
+                  ${esc(d.shippingAddress.street)}<br/>
+                  ${esc(d.shippingAddress.postalCode)} ${esc(d.shippingAddress.city)}<br/>
+                  ${esc(d.shippingAddress.country)}
+                </p>
+                <p style="margin:12px 0 0;font-size:12px;color:${C.textMuted};font-style:italic;">${d.shippingTo === 'buyer' ? "À remettre en main propre par l'acheteur." : 'À expédier directement au destinataire.'} Le chèque cadeau à imprimer est joint en PDF.</p>
+              </td></tr>
+            </table>
+            ` : ''}
             <p style="margin:0;font-size:11px;color:${C.textMuted};text-align:center;">Réf. : ${d.paymentIntentId}</p>
           </td>
         </tr>
@@ -708,10 +737,12 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
     // On continue sans le PDF plutôt que de bloquer l'envoi
   }
 
-  // Envoi des 3 emails de façon indépendante — chaque envoi est isolé
+  const isPhysical = data.deliveryMethod === 'physical'
+
+  // Envoi des emails de façon indépendante — chaque envoi est isolé
   // pour qu'une erreur sur l'un ne bloque pas les autres.
 
-  // 1. Email acheteur
+  // 1. Email acheteur (toujours)
   try {
     const res = await client.emails.send({
       from: FROM_LABEL,
@@ -725,28 +756,37 @@ export async function sendGiftCardEmails(data: GiftCardEmailData): Promise<void>
     console.error('[sendGiftCardEmails] buyer FAILED:', err)
   }
 
-  // 2. Email destinataire (avec PDF si disponible)
-  try {
-    const res = await client.emails.send({
-      from: FROM_LABEL,
-      to: data.recipientEmail,
-      subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
-      html: buildGiftCardRecipientHtml(data),
-      ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
-    })
-    if (res.error) console.error('[sendGiftCardEmails] recipient ERROR:', JSON.stringify(res.error))
-    else console.log('[sendGiftCardEmails] recipient OK — id:', res.data?.id)
-  } catch (err) {
-    console.error('[sendGiftCardEmails] recipient FAILED:', err)
+  // 2. Email destinataire — UNIQUEMENT en livraison numérique.
+  //    En livraison papier, le destinataire reçoit la carte par courrier :
+  //    on n'envoie pas le bon par email pour ne pas gâcher la surprise.
+  if (!isPhysical && data.recipientEmail) {
+    try {
+      const res = await client.emails.send({
+        from: FROM_LABEL,
+        to: data.recipientEmail,
+        subject: `Vous avez reçu un bon cadeau Kalm Headspa ✦`,
+        html: buildGiftCardRecipientHtml(data),
+        ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
+      })
+      if (res.error) console.error('[sendGiftCardEmails] recipient ERROR:', JSON.stringify(res.error))
+      else console.log('[sendGiftCardEmails] recipient OK — id:', res.data?.id)
+    } catch (err) {
+      console.error('[sendGiftCardEmails] recipient FAILED:', err)
+    }
+  } else {
+    console.log('[sendGiftCardEmails] recipient SKIPPED (livraison papier ou email absent)')
   }
 
-  // 3. Email salon
+  // 3. Email salon (toujours) — en livraison papier, on joint le PDF à imprimer.
   try {
     const res = await client.emails.send({
       from: FROM_LABEL,
       to: SALON_EMAIL,
-      subject: `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`,
+      subject: isPhysical
+        ? `[Bon cadeau À EXPÉDIER] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`
+        : `[Bon cadeau] ${data.buyerFirstName} ${data.buyerLastName} — ${data.giftAmount}€ · ${data.giftCardCode}`,
       html: buildGiftCardSalonHtml(data),
+      ...(isPhysical && pdfAttachment ? { attachments: [pdfAttachment] } : {}),
     })
     if (res.error) console.error('[sendGiftCardEmails] salon ERROR:', JSON.stringify(res.error))
     else console.log('[sendGiftCardEmails] salon OK — id:', res.data?.id)

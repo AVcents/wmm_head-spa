@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, Mail, Package, ChevronLeft } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
+import { GIFT_CARD_DELIVERY_FEE } from '@/lib/gift-card'
 
 interface DeliveryStepProps {
   data: GiftCardData
@@ -36,7 +37,7 @@ const deliveryOptions = [
       'Message manuscrit disponible',
       'Livraison sous 2-3 jours ouvrés',
     ],
-    price: '+5€',
+    price: `+${GIFT_CARD_DELIVERY_FEE}€`,
   },
 ]
 

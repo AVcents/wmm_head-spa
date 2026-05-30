@@ -11,6 +11,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Lock } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
+import { giftTotalOf } from '@/lib/gift-card'
 
 // Initialisation Stripe (singleton)
 const stripePromise = loadStripe(
@@ -113,8 +114,7 @@ function CheckoutForm({
 // PaymentStep — wrappé dans <Elements>
 // -----------------------------------------------
 export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
-  const deliveryFee = data.deliveryMethod === 'physical' ? 5 : 0
-  const totalAmount = (data.amount ?? 0) + deliveryFee
+  const totalAmount = giftTotalOf(data)
 
   if (!data.clientSecret) {
     return (

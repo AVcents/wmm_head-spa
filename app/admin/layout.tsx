@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   LayoutGrid,
   Sparkles,
+  Gift,
 } from 'lucide-react'
 import Image from 'next/image'
 import { ThemeToggle } from '@/components/shared/theme-toggle'
@@ -21,6 +22,7 @@ import { ThemeToggle } from '@/components/shared/theme-toggle'
 const navItems = [
   { href: '/admin/agenda', label: 'Agenda', icon: LayoutGrid },
   { href: '/admin/reservations', label: 'Réservations', icon: Calendar },
+  { href: '/admin/bons-cadeaux', label: 'Bons cadeaux', icon: Gift },
   { href: '/admin/prestations', label: 'Prestations', icon: Scissors },
   { href: '/admin/extras', label: 'Extras', icon: Sparkles },
   { href: '/admin/horaires', label: 'Templates horaires', icon: Clock },

@@ -143,7 +143,34 @@ CREATE TABLE IF NOT EXISTS gift_cards (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
   service_id TEXT REFERENCES services(id),  -- NULL = bon cadeau libre
-  amount NUMERIC(10,2) NOT NULL,
+  service_name TEXT,
+  hair_length_label TEXT,
+  amount NUMERIC(10,2) NOT NULL,            -- valeur du bon (prestation + extras)
+  delivery_fee NUMERIC(10,2) NOT NULL DEFAULT 0,
+  total_amount NUMERIC(10,2),               -- montant total encaissé
+  delivery_method TEXT NOT NULL DEFAULT 'digital' CHECK (delivery_method IN ('digital', 'physical')),
+  -- Acheteur
+  buyer_email TEXT,
+  buyer_first_name TEXT,
+  buyer_last_name TEXT,
+  buyer_phone TEXT,
+  -- Destinataire
+  recipient_email TEXT,
+  recipient_first_name TEXT,
+  recipient_last_name TEXT,
+  recipient_phone TEXT,
+  -- Extras + message
+  extras JSONB,
+  sender_name TEXT,
+  personal_message TEXT,
+  -- Livraison papier
+  shipping_to TEXT CHECK (shipping_to IN ('recipient', 'buyer')),
+  shipping_street TEXT,
+  shipping_city TEXT,
+  shipping_postal_code TEXT,
+  shipping_country TEXT,
+  shipped_at TIMESTAMPTZ,                    -- date d'expédition (bons papier)
+  -- Utilisation / cycle de vie
   used BOOLEAN NOT NULL DEFAULT false,
   used_at TIMESTAMPTZ,
   used_booking_id TEXT,
@@ -153,6 +180,8 @@ CREATE TABLE IF NOT EXISTS gift_cards (
 );
 
 CREATE INDEX IF NOT EXISTS idx_gift_cards_code ON gift_cards(code);
+CREATE INDEX IF NOT EXISTS idx_gift_cards_created_at ON gift_cards(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gift_cards_delivery_method ON gift_cards(delivery_method);
 
 -- RLS (Row Level Security)
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;

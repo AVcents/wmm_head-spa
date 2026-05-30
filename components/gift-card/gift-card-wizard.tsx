@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { AmountStep } from './steps/amount-step'
 import { HairLengthStep } from './steps/hair-length-step'
+import { ExtrasStep } from './steps/extras-step'
 import { DeliveryStep } from './steps/delivery-step'
 import { RecipientStep } from './steps/recipient-step'
 import { MessageStep } from './steps/message-step'
@@ -15,6 +16,8 @@ import { BuyerStep } from './steps/buyer-step'
 import { ReviewStep } from './steps/review-step'
 import { PaymentStep } from './steps/payment-step'
 import type { Service } from '@/lib/services-data'
+import type { GiftCardExtra, ShippingAddress } from '@/lib/gift-card'
+import { giftTotalOf } from '@/lib/gift-card'
 
 export interface GiftCardData {
   // Service selection
@@ -24,6 +27,9 @@ export interface GiftCardData {
   hairLength?: 'courts' | 'mi-longs' | 'longs' | 'rases' | 'enfant' | 'body'
   hairLengthLabel?: string
   amount?: number
+
+  // Extras step
+  extras?: GiftCardExtra[]
 
   // Delivery step
   deliveryMethod?: 'digital' | 'physical'
@@ -45,12 +51,7 @@ export interface GiftCardData {
   buyerLastName?: string
 
   // Physical delivery
-  shippingAddress?: {
-    street: string
-    city: string
-    postalCode: string
-    country: string
-  }
+  shippingAddress?: ShippingAddress
   shippingTo?: 'recipient' | 'buyer'
 
   // Payment (Stripe)
@@ -62,12 +63,13 @@ export interface GiftCardData {
 const baseSteps = [
   { id: 1, name: 'Prestation', component: AmountStep },
   { id: 2, name: 'Longueur', component: HairLengthStep, conditional: true },
-  { id: 3, name: 'Livraison', component: DeliveryStep },
-  { id: 4, name: 'Destinataire', component: RecipientStep },
-  { id: 5, name: 'Message', component: MessageStep },
-  { id: 6, name: 'Vos infos', component: BuyerStep },
-  { id: 7, name: 'Récapitulatif', component: ReviewStep },
-  { id: 8, name: 'Paiement', component: PaymentStep },
+  { id: 3, name: 'Options', component: ExtrasStep },
+  { id: 4, name: 'Livraison', component: DeliveryStep },
+  { id: 5, name: 'Destinataire', component: RecipientStep },
+  { id: 6, name: 'Message', component: MessageStep },
+  { id: 7, name: 'Vos infos', component: BuyerStep },
+  { id: 8, name: 'Récapitulatif', component: ReviewStep },
+  { id: 9, name: 'Paiement', component: PaymentStep },
 ]
 
 interface GiftCardWizardProps {
@@ -197,8 +199,8 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
   // Écran de succès
   // -----------------------------------------------
   if (isComplete) {
-    const deliveryFee = formData.deliveryMethod === 'physical' ? 5 : 0
-    const totalAmount = (formData.amount ?? 0) + deliveryFee
+    const totalAmount = giftTotalOf(formData)
+    const isPhysical = formData.deliveryMethod === 'physical'
 
     return (
       <div className="min-h-screen bg-background py-12 flex items-center justify-center">
@@ -215,16 +217,29 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-serif font-bold text-foreground mb-3">
-              Bon cadeau envoyé !
+              {isPhysical ? 'Commande confirmée !' : 'Bon cadeau envoyé !'}
             </h1>
             <p className="text-lg text-foreground-secondary mb-8">
               Votre paiement de{' '}
               <strong className="text-primary-600">{totalAmount}€</strong> a bien
-              été encaissé. Le bon cadeau a été envoyé à{' '}
-              <strong>
-                {formData.recipientFirstName} {formData.recipientLastName}
-              </strong>
-              .
+              été encaissé.{' '}
+              {isPhysical ? (
+                <>
+                  Le bon cadeau sera expédié par courrier sous 2-3 jours ouvrés à{' '}
+                  <strong>
+                    {formData.recipientFirstName} {formData.recipientLastName}
+                  </strong>
+                  .
+                </>
+              ) : (
+                <>
+                  Le bon cadeau a été envoyé à{' '}
+                  <strong>
+                    {formData.recipientFirstName} {formData.recipientLastName}
+                  </strong>
+                  .
+                </>
+              )}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-left">
@@ -249,16 +264,16 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
                     <Gift className="h-4 w-4 text-primary-600" />
                   )}
                   <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide">
-                    Bon cadeau envoyé à
+                    {isPhysical ? 'Bon cadeau à expédier à' : 'Bon cadeau envoyé à'}
                   </p>
                 </div>
                 <p className="font-medium text-foreground">
                   {formData.recipientFirstName} {formData.recipientLastName}
                 </p>
                 <p className="text-sm text-foreground-secondary">
-                  {formData.deliveryMethod === 'digital'
-                    ? formData.recipientEmail
-                    : 'Par courrier postal'}
+                  {isPhysical
+                    ? 'Expédition par courrier sous 2-3 jours ouvrés'
+                    : formData.recipientEmail}
                 </p>
               </div>
             </div>

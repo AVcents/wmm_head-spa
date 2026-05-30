@@ -57,6 +57,30 @@ export async function POST(req: NextRequest) {
       const giftAmount = parseFloat(meta['giftAmount'] ?? '0')
       const deliveryFee = parseFloat(meta['deliveryFee'] ?? '0')
       const totalAmount = giftAmount + deliveryFee
+      const deliveryMethod = (meta['deliveryMethod'] as 'digital' | 'physical') ?? 'digital'
+
+      // Parser les extras depuis les metadata (format compact [{n,p}])
+      let extras: Array<{ name: string; price: number }> = []
+      try {
+        const raw = JSON.parse(meta['extras'] ?? '[]') as Array<{ n?: string; p?: number }>
+        extras = (Array.isArray(raw) ? raw : [])
+          .filter((e) => e && e.n)
+          .map((e) => ({ name: String(e.n), price: Number(e.p ?? 0) }))
+      } catch {
+        extras = []
+      }
+
+      // Reconstituer l'adresse de livraison (papier uniquement)
+      const hasShipping = deliveryMethod === 'physical' && Boolean(meta['shippingStreet'])
+      const shippingAddress = hasShipping
+        ? {
+            street: meta['shippingStreet'] ?? '',
+            city: meta['shippingCity'] ?? '',
+            postalCode: meta['shippingPostalCode'] ?? '',
+            country: meta['shippingCountry'] ?? '',
+          }
+        : undefined
+      const shippingTo = (meta['shippingTo'] as 'recipient' | 'buyer') || undefined
 
       const data: GiftCardEmailData = {
         giftCardCode: meta['giftCardCode'] ?? '',
@@ -70,14 +94,20 @@ export async function POST(req: NextRequest) {
         recipientEmail: meta['recipientEmail'] ?? '',
         recipientFirstName: meta['recipientFirstName'] ?? '',
         recipientLastName: meta['recipientLastName'] ?? '',
+        ...(meta['recipientPhone'] ? { recipientPhone: meta['recipientPhone'] } : {}),
         // Service
         serviceName: meta['serviceName'] ?? 'Bon cadeau libre',
         ...(meta['hairLengthLabel'] ? { hairLengthLabel: meta['hairLengthLabel'] } : {}),
+        // Extras
+        ...(extras.length ? { extras } : {}),
         // Montants
         giftAmount,
         deliveryFee,
         totalAmount,
-        deliveryMethod: (meta['deliveryMethod'] as 'digital' | 'physical') ?? 'digital',
+        deliveryMethod,
+        // Livraison papier
+        ...(shippingTo ? { shippingTo } : {}),
+        ...(shippingAddress ? { shippingAddress } : {}),
         // Message
         ...(meta['senderName'] ? { senderName: meta['senderName'] } : {}),
         ...(meta['personalMessage'] ? { personalMessage: meta['personalMessage'] } : {}),
@@ -93,8 +123,33 @@ export async function POST(req: NextRequest) {
         await supabase.from('gift_cards').insert({
           code: meta['giftCardCode'] ?? '',
           service_id: serviceId && serviceId.length > 0 ? serviceId : null,
+          service_name: meta['serviceName'] ?? null,
+          hair_length_label: meta['hairLengthLabel'] || null,
           amount: giftAmount,
+          delivery_fee: deliveryFee,
+          total_amount: totalAmount,
+          delivery_method: deliveryMethod,
           payment_intent_id: pi.id,
+          // Acheteur
+          buyer_email: meta['buyerEmail'] || null,
+          buyer_first_name: meta['buyerFirstName'] || null,
+          buyer_last_name: meta['buyerLastName'] || null,
+          buyer_phone: meta['buyerPhone'] || null,
+          // Destinataire
+          recipient_email: meta['recipientEmail'] || null,
+          recipient_first_name: meta['recipientFirstName'] || null,
+          recipient_last_name: meta['recipientLastName'] || null,
+          recipient_phone: meta['recipientPhone'] || null,
+          // Extras + message
+          extras: extras.length ? extras : null,
+          sender_name: meta['senderName'] || null,
+          personal_message: meta['personalMessage'] || null,
+          // Livraison papier
+          shipping_to: shippingTo ?? null,
+          shipping_street: shippingAddress?.street ?? null,
+          shipping_city: shippingAddress?.city ?? null,
+          shipping_postal_code: shippingAddress?.postalCode ?? null,
+          shipping_country: shippingAddress?.country ?? null,
           expires_at: new Date(
             Date.now() + 365 * 24 * 60 * 60 * 1000
           ).toISOString(),

@@ -12,7 +12,8 @@
       "Bash(npx tsc --noEmit)",
       "Bash(node -c /Users/cent/Documents/Agence/Clients/Kalm Headspa/kalm-headspa-site/app/api/admin/capture-payment/route.ts)",
       "Bash(pnpm next lint)",
-      "Bash(kill -9 23393 23387 28855 28849 28823)"
+      "Bash(kill -9 23393 23387 28855 28849 28823)",
+      "Bash(pnpm dev *)"
     ],
     "deny": [],
     "ask": []

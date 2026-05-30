@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ChevronLeft, Sparkles } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
+import { GIFT_CARD_MESSAGE_MAX } from '@/lib/gift-card'
 
 interface MessageStepProps {
   data: GiftCardData
@@ -74,11 +75,11 @@ export function MessageStep({ data, onNext, onBack }: MessageStepProps) {
             onChange={(e) => handleChange('personalMessage', e.target.value)}
             placeholder="Écrivez votre message personnalisé ici..."
             rows={5}
-            maxLength={500}
+            maxLength={GIFT_CARD_MESSAGE_MAX}
           />
           <div className="flex justify-between text-sm text-foreground-secondary">
-            <span>Maximum 500 caractères</span>
-            <span>{formData.personalMessage.length}/500</span>
+            <span>Maximum {GIFT_CARD_MESSAGE_MAX} caractères</span>
+            <span>{formData.personalMessage.length}/{GIFT_CARD_MESSAGE_MAX}</span>
           </div>
         </div>
 

@@ -14,6 +14,8 @@ interface RecipientStepProps {
 }
 
 export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
+  const isPhysical = data.deliveryMethod === 'physical'
+
   const [formData, setFormData] = useState({
     recipientFirstName: data.recipientFirstName || '',
     recipientLastName: data.recipientLastName || '',
@@ -42,9 +44,15 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
       newErrors['recipientLastName'] = 'Le nom est requis'
     }
 
-    if (!formData.recipientEmail.trim()) {
+    // Email : requis uniquement pour l'envoi numérique. Pour un bon papier,
+    // l'acheteur ne connaît pas forcément l'email du destinataire — il reste
+    // facultatif mais validé s'il est renseigné.
+    if (!isPhysical && !formData.recipientEmail.trim()) {
       newErrors['recipientEmail'] = 'L\'email est requis'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.recipientEmail)) {
+    } else if (
+      formData.recipientEmail.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.recipientEmail)
+    ) {
       newErrors['recipientEmail'] = 'Email invalide'
     }
 
@@ -106,7 +114,12 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
 
         <div className="space-y-2">
           <Label htmlFor="recipientEmail">
-            Email <span className="text-red-500">*</span>
+            Email{' '}
+            {isPhysical ? (
+              <span className="text-foreground-secondary">(optionnel)</span>
+            ) : (
+              <span className="text-red-500">*</span>
+            )}
           </Label>
           <Input
             id="recipientEmail"
@@ -120,7 +133,9 @@ export function RecipientStep({ data, onNext, onBack }: RecipientStepProps) {
             <p className="text-sm text-red-500">{errors['recipientEmail']}</p>
           )}
           <p className="text-sm text-foreground-secondary">
-            Le bon cadeau sera envoyé à cette adresse email
+            {isPhysical
+              ? 'Le bon est envoyé par courrier. Un email permet, en option, d’envoyer aussi une confirmation au destinataire.'
+              : 'Le bon cadeau sera envoyé à cette adresse email'}
           </p>
         </div>
 

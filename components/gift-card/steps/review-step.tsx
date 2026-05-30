@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Check, Mail, Package, Gift } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
+import { deliveryFeeFor, extrasTotal, giftAmountOf, giftTotalOf, formatEuro } from '@/lib/gift-card'
 
 interface ReviewStepProps {
   data: GiftCardData
@@ -14,8 +15,11 @@ interface ReviewStepProps {
 export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const deliveryFee = data.deliveryMethod === 'physical' ? 5 : 0
-  const totalAmount = (data.amount || 0) + deliveryFee
+  const deliveryFee = deliveryFeeFor(data.deliveryMethod)
+  const giftAmount = giftAmountOf(data)        // prestation + extras (valeur du bon)
+  const extrasSum = extrasTotal(data.extras)
+  const totalAmount = giftTotalOf(data)        // bon + frais de livraison
+  const selectedExtras = data.extras ?? []
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
@@ -30,6 +34,7 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
           hairLengthLabel: data.hairLengthLabel ?? '',
           deliveryMethod: data.deliveryMethod ?? 'digital',
           deliveryFee,
+          extras: selectedExtras,
           buyerEmail: data.buyerEmail ?? '',
           buyerFirstName: data.buyerFirstName ?? '',
           buyerLastName: data.buyerLastName ?? '',
@@ -40,6 +45,9 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
           recipientPhone: data.recipientPhone ?? '',
           senderName: data.senderName ?? '',
           personalMessage: data.personalMessage ?? '',
+          ...(data.deliveryMethod === 'physical' && data.shippingAddress
+            ? { shippingAddress: data.shippingAddress, shippingTo: data.shippingTo ?? 'recipient' }
+            : {}),
         }),
       })
       if (!res.ok) {
@@ -96,9 +104,25 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
                     )}
                   </>
                 )}
+                {selectedExtras.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border space-y-1">
+                    <p className="font-medium text-foreground">Options :</p>
+                    {selectedExtras.map((extra) => (
+                      <p key={extra.id} className="flex justify-between">
+                        <span>+ {extra.name}</span>
+                        <span>+{formatEuro(Number(extra.price))}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
                 <p className="text-2xl font-bold text-primary-600 dark:text-primary-400 mt-2">
-                  {data.amount}€
+                  {formatEuro(giftAmount)}
                 </p>
+                {extrasSum > 0 && (
+                  <p className="text-xs text-foreground-secondary">
+                    Prestation {formatEuro(data.amount || 0)} + options {formatEuro(extrasSum)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -225,12 +249,12 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold text-foreground">Total</span>
             <span className="text-3xl font-bold text-primary-600 dark:text-primary-400">
-              {totalAmount}€
+              {formatEuro(totalAmount)}
             </span>
           </div>
           {deliveryFee > 0 && (
             <p className="text-sm text-foreground-secondary mt-2">
-              Montant du bon : {data.amount}€ + Frais de livraison : {deliveryFee}€
+              Montant du bon : {formatEuro(giftAmount)} + Frais de livraison : {formatEuro(deliveryFee)}
             </p>
           )}
         </div>

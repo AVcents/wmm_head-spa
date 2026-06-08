@@ -9,6 +9,7 @@ import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createBooking, getBookingByPaymentIntent } from '@/lib/supabase/bookings'
 import { invalidateSlotsCache } from '@/lib/data'
+import { computeBookingTotal, applyPromoToTotal, incrementPromoUsage } from '@/lib/pricing'
 import { sendBookingEmails } from '@/lib/email'
 
 // ---------- Types ----------
@@ -18,6 +19,8 @@ interface ConfirmBody {
   giftCardCode?: string
   serviceId: string
   variantId?: string
+  extraIds?: string[]
+  promoCode?: string
   startsAt: string
   endsAt: string
   clientName: string
@@ -66,6 +69,31 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient()
 
     // ===========================
+    // 0. Montant AUTORITAIRE recalculé serveur (jamais body.price)
+    // ===========================
+
+    const baseTotal = await computeBookingTotal({
+      serviceId: body.serviceId,
+      variantId: body.variantId ?? null,
+      extraIds: Array.isArray(body.extraIds) ? body.extraIds : [],
+    })
+
+    let discountAmount = 0
+    let appliedPromo: string | null = null
+    if (body.promoCode && body.promoCode.trim()) {
+      const promo = await applyPromoToTotal(body.promoCode, baseTotal)
+      if (promo.valid) {
+        discountAmount = promo.discountAmount
+        appliedPromo = promo.code ?? null
+      }
+      // Si le code est devenu invalide entre le paiement et la confirmation,
+      // on ne bloque pas la résa déjà payée : le contrôle pi.amount ci-dessous
+      // garantit la cohérence avec ce qui a réellement été débité.
+    }
+
+    const netTotal = Math.round((baseTotal - discountAmount) * 100) / 100
+
+    // ===========================
     // 1. Vérifier le paiement
     // ===========================
 
@@ -93,13 +121,13 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Vérifier que le prix annoncé par le client correspond au montant Stripe
-      // Empêche la manipulation de body.price entre le wizard et la confirm
-      const expectedCents = Math.round((body.price ?? 0) * 100)
+      // Le montant Stripe doit correspondre au total net recalculé serveur.
+      // Empêche toute manipulation du prix entre le wizard et la confirm.
+      const expectedCents = Math.round(netTotal * 100)
       if (pi.amount !== expectedCents) {
         console.error(
           '[confirm] Prix incohérent — pi.amount:', pi.amount,
-          '/ body.price (cts):', expectedCents,
+          '/ netTotal (cts):', expectedCents,
           '/ pi:', pi.id
         )
         return NextResponse.json(
@@ -176,7 +204,7 @@ export async function POST(req: NextRequest) {
       payment_mode: body.paymentMode,
       booked_by:    'client',
       service_name: body.serviceName,
-      price:        body.price,
+      price:        netTotal,
     }
 
     if (body.variantId) bookingData.variant_id = body.variantId
@@ -186,8 +214,18 @@ export async function POST(req: NextRequest) {
     if (body.extras?.length) bookingData.extras_json = body.extras
     if (body.extrasTotal !== undefined) bookingData.extras_total = body.extrasTotal
     if (body.variantName) bookingData.variant_name = body.variantName
+    if (appliedPromo) {
+      bookingData.promo_code = appliedPromo
+      bookingData.discount_amount = discountAmount
+    }
 
     const booking = await createBooking(bookingData)
+
+    // Consommer le code promo (idempotent : on est passé après le check de
+    // duplication par paymentIntentId, donc un retry ne ré-incrémente pas)
+    if (appliedPromo) {
+      await incrementPromoUsage(appliedPromo)
+    }
 
     // ===========================
     // 4. Invalider le cache de créneaux
@@ -222,7 +260,7 @@ export async function POST(req: NextRequest) {
       serviceName: body.serviceName,
       date:        body.startsAt,
       duration,
-      price:       body.price,
+      price:       netTotal,
       bookingId:   booking.id,
     }
     if (body.variantName)    emailData.variantLabel = body.variantName

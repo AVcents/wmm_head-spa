@@ -39,6 +39,20 @@ export interface ExtraRow {
   updated_at: string
 }
 
+export interface PromoCodeRow {
+  id: string
+  code: string
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  min_amount: number
+  max_uses: number | null
+  used_count: number
+  expires_at: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface ScheduleConfigRow {
   id: number
   active_template: string
@@ -107,6 +121,8 @@ export interface BookingRow {
   price: number | null
   extras_json: Array<{ name: string; price: number }> | null
   extras_total: number | null
+  promo_code: string | null
+  discount_amount: number | null
   booked_by: 'client' | 'admin'
   note: string | null
   service_name: string

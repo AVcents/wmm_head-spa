@@ -21,6 +21,7 @@ import {
   Clock,
   Euro,
   Info,
+  Ticket,
 } from 'lucide-react'
 import type { BookingState, PaymentMode } from '../reservation-content'
 
@@ -174,6 +175,16 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
   const [confirmingBooking, setConfirmingBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // ─── Code promo ───
+  const [promoInput, setPromoInput] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'valid' | 'error'>('idle')
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string
+    discountAmount: number
+    finalAmount: number
+  } | null>(null)
+
   const variant = booking.variantId
     ? booking.service?.variants?.find((v) => v.id === booking.variantId)
     : null
@@ -184,6 +195,10 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
     0
   )
   const totalPrice = price + extrasTotal
+  const extraIds = (booking.selectedExtras ?? []).map((e) => e.id)
+
+  // Montant effectivement facturé (après remise éventuelle)
+  const effectiveTotal = appliedPromo ? appliedPromo.finalAmount : totalPrice
 
   // Créer un intent Stripe (pour hold ou direct)
   const createStripeIntent = useCallback(
@@ -199,8 +214,10 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             paymentMethod: mode,
-            amount: totalPrice,
             serviceId: booking.service?.id ?? '',
+            variantId: booking.variantId ?? null,
+            extraIds,
+            promoCode: appliedPromo?.code,
             clientName: booking.clientInfo?.name ?? '',
             clientEmail: booking.clientInfo?.email ?? '',
             startsAt: booking.slot?.startsAt ?? '',
@@ -225,7 +242,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         setLoadingIntent(false)
       }
     },
-    [booking, totalPrice]
+    [booking, extraIds, appliedPromo]
   )
 
   // Sélection du mode de paiement
@@ -241,6 +258,64 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
     if (mode === 'hold' || mode === 'direct') {
       void createStripeIntent(mode)
     }
+  }
+
+  // Remet à zéro la sélection de paiement (le montant a changé)
+  const resetPaymentSelection = () => {
+    setSelectedMode(null)
+    setClientSecret(null)
+    _setPaymentIntentId(null)
+    setGiftCardStatus('idle')
+    setGiftCardError(null)
+    setRemainingAmount(null)
+    setError(null)
+  }
+
+  // Appliquer un code promo (validation + calcul serveur)
+  const applyPromo = async () => {
+    if (!promoInput.trim()) return
+    setPromoStatus('loading')
+    setPromoError(null)
+    try {
+      const res = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: promoInput.trim(),
+          serviceId: booking.service?.id ?? '',
+          variantId: booking.variantId ?? null,
+          extraIds,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        setPromoStatus('error')
+        setPromoError(data.error ?? 'Code promo invalide')
+        setAppliedPromo(null)
+        return
+      }
+      setPromoStatus('valid')
+      setAppliedPromo({
+        code: data.code,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+      })
+      // Le montant a changé : on réinitialise le mode de paiement choisi
+      resetPaymentSelection()
+    } catch {
+      setPromoStatus('error')
+      setPromoError('Erreur de validation du code')
+      setAppliedPromo(null)
+    }
+  }
+
+  // Retirer le code promo appliqué
+  const removePromo = () => {
+    setAppliedPromo(null)
+    setPromoInput('')
+    setPromoStatus('idle')
+    setPromoError(null)
+    resetPaymentSelection()
   }
 
   // Valider le bon cadeau
@@ -259,9 +334,11 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentMethod: 'gift_card',
-          amount: totalPrice,
           giftCardCode: giftCardCode.trim(),
           serviceId: booking.service?.id ?? '',
+          variantId: booking.variantId ?? null,
+          extraIds,
+          promoCode: appliedPromo?.code,
           clientName: booking.clientInfo?.name ?? '',
           clientEmail: booking.clientInfo?.email ?? '',
           startsAt: booking.slot?.startsAt ?? '',
@@ -315,6 +392,8 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
             mode === 'gift_card' ? giftCardCode.trim() : undefined,
           serviceId: booking.service?.id ?? '',
           variantId: booking.variantId ?? undefined,
+          extraIds,
+          promoCode: appliedPromo?.code,
           startsAt: booking.slot?.startsAt,
           endsAt: booking.slot?.endsAt,
           clientName: booking.clientInfo?.name,
@@ -323,7 +402,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           message: booking.clientInfo?.message,
           serviceName: booking.service?.name,
           variantName: variant?.hairLengthLabel,
-          price: totalPrice,
+          price: effectiveTotal,
           extras: (booking.selectedExtras ?? []).map((e) => ({
             name: e.name,
             price: e.price,
@@ -353,7 +432,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         ? 0
         : selectedMode === 'gift_card'
           ? (remainingAmount ?? 0)
-          : totalPrice
+          : effectiveTotal
     void confirmBooking(selectedMode!, piId, amountPaid)
   }
 
@@ -418,11 +497,86 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
               <div className="h-px bg-primary-200 dark:bg-primary-800/30 my-1" />
             </>
           )}
+          {/* Ligne de remise si code promo appliqué */}
+          {appliedPromo && (
+            <div className="flex items-center justify-between text-success">
+              <span className="text-sm flex items-center gap-1.5">
+                <Ticket className="h-4 w-4" /> Code {appliedPromo.code}
+              </span>
+              <span className="font-medium text-sm">−{appliedPromo.discountAmount.toFixed(2)}€</span>
+            </div>
+          )}
+
+          <div className="h-px bg-primary-200 dark:bg-primary-800/30 my-1" />
+
           <div className="flex items-center justify-between">
             <span className="font-semibold text-foreground">Total</span>
-            <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
-              {totalPrice}€
+            <span className="flex items-baseline gap-2">
+              {appliedPromo && (
+                <span className="text-sm text-foreground-muted line-through">{totalPrice}€</span>
+              )}
+              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                {effectiveTotal}€
+              </span>
             </span>
+          </div>
+
+          {/* Champ code promo */}
+          <div className="pt-3">
+            {!appliedPromo ? (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value.toUpperCase())
+                      if (promoStatus !== 'idle') {
+                        setPromoStatus('idle')
+                        setPromoError(null)
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void applyPromo()
+                      }
+                    }}
+                    placeholder="Code promo"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-sm font-mono tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void applyPromo()}
+                    disabled={!promoInput.trim() || promoStatus === 'loading'}
+                    className="px-5 py-2.5 rounded-xl border border-primary-600 text-primary-700 dark:text-primary-300 font-medium text-sm hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50 transition-colors flex-shrink-0"
+                  >
+                    {promoStatus === 'loading'
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : 'Appliquer'}
+                  </button>
+                </div>
+                {promoStatus === 'error' && promoError && (
+                  <p className="mt-2 text-sm text-error flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                    {promoError}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-success/10 border border-success/20">
+                <span className="text-sm text-success flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" /> Code <strong>{appliedPromo.code}</strong> appliqué
+                </span>
+                <button
+                  type="button"
+                  onClick={removePromo}
+                  className="text-xs text-foreground-secondary hover:text-error underline transition-colors"
+                >
+                  Retirer
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -507,8 +661,8 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                       <p className="font-medium mb-1">Politique d&apos;annulation</p>
                       <ul className="space-y-1 text-xs">
                         <li>Annulation à plus de 24h : aucun frais</li>
-                        <li>Annulation à moins de 24h : 30% du montant ({Math.round(totalPrice * 0.30)}€)</li>
-                        <li>Absence sans prévenir : 80% du montant ({Math.round(totalPrice * 0.80)}€)</li>
+                        <li>Annulation à moins de 24h : 30% du montant ({Math.round(effectiveTotal * 0.30)}€)</li>
+                        <li>Absence sans prévenir : 80% du montant ({Math.round(effectiveTotal * 0.80)}€)</li>
                       </ul>
                       <p className="mt-2 text-xs italic">
                         En confirmant, vous acceptez cette politique d&apos;annulation et autorisez
@@ -548,7 +702,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary-600" />
                 <span className="font-medium text-foreground">
-                  Paiement immédiat par carte — {totalPrice}€
+                  Paiement immédiat par carte — {effectiveTotal}€
                 </span>
               </div>
               <p className="text-sm text-foreground-secondary mt-1">
@@ -691,7 +845,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
                   amount={
                     selectedMode === 'gift_card'
                       ? (remainingAmount ?? 0)
-                      : totalPrice
+                      : effectiveTotal
                   }
                   buttonLabel={
                     selectedMode === 'hold'

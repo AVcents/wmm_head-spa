@@ -13,7 +13,12 @@
       "Bash(node -c /Users/cent/Documents/Agence/Clients/Kalm Headspa/kalm-headspa-site/app/api/admin/capture-payment/route.ts)",
       "Bash(pnpm next lint)",
       "Bash(kill -9 23393 23387 28855 28849 28823)",
-      "Bash(pnpm dev *)"
+      "Bash(pnpm dev *)",
+      "Bash(xargs ls -la)",
+      "Bash(pnpm install *)",
+      "Read(//Users/cent/.local/share/pnpm/**)",
+      "Read(//Users/cent/Library/pnpm/store/**)",
+      "Bash(pnpm lint *)"
     ],
     "deny": [],
     "ask": []

@@ -24,6 +24,8 @@ export interface CreateBookingData {
   price?: number
   extras_json?: Array<{ name: string; price: number }>
   extras_total?: number
+  promo_code?: string
+  discount_amount?: number
   booked_by?: 'client' | 'admin'
   note?: string
   service_name: string
@@ -56,6 +58,8 @@ export async function createBooking(data: CreateBookingData): Promise<BookingRow
   if (data.price != null)      row['price']              = data.price
   if (data.extras_json?.length) row['extras_json']       = data.extras_json
   if (data.extras_total != null) row['extras_total']     = data.extras_total
+  if (data.promo_code)         row['promo_code']         = data.promo_code
+  if (data.discount_amount != null) row['discount_amount'] = data.discount_amount
   if (data.note)               row['note']               = data.note
   if (data.variant_name)       row['variant_name']       = data.variant_name
 

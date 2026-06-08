@@ -18,7 +18,9 @@ import type {
   ExtraRow,
   PlanningOverrideRow,
   ServiceExtraRow,
+  PromoCodeRow,
 } from '@/lib/supabase/types'
+import { randomUUID } from 'crypto'
 import type { Service } from '@/lib/services-data'
 
 // ============================================
@@ -221,6 +223,73 @@ export async function deleteExtra(id: string): Promise<boolean> {
   const supabase = createAdminClient()
   const { error } = await supabase.from('extras').delete().eq('id', id)
   if (error) { console.error('Error deleting extra:', error); return false }
+  return true
+}
+
+// ============================================
+// PROMO CODES (admin — service_role)
+// ============================================
+
+/** Liste tous les codes promo (admin) */
+export async function getPromoCodesAdmin(): Promise<PromoCodeRow[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) { console.error('Error fetching promo codes:', error); return [] }
+  return (data ?? []) as PromoCodeRow[]
+}
+
+/** Crée un code promo. Renvoie la ligne créée ou null (ex: code déjà pris). */
+export async function createPromoCode(
+  input: Omit<PromoCodeRow, 'id' | 'used_count' | 'created_at' | 'updated_at'>
+): Promise<PromoCodeRow | null> {
+  const supabase = createAdminClient()
+  const row = {
+    id: randomUUID(),
+    code: input.code.trim().toUpperCase(),
+    discount_type: input.discount_type,
+    discount_value: input.discount_value,
+    min_amount: input.min_amount,
+    max_uses: input.max_uses,
+    expires_at: input.expires_at,
+    is_active: input.is_active,
+    used_count: 0,
+  }
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .insert(row)
+    .select()
+    .single()
+  if (error) { console.error('Error creating promo code:', error.message); return null }
+  return data as PromoCodeRow
+}
+
+/** Met à jour un code promo */
+export async function updatePromoCode(
+  id: string,
+  updates: Partial<Omit<PromoCodeRow, 'id' | 'used_count' | 'created_at' | 'updated_at'>>
+): Promise<boolean> {
+  const supabase = createAdminClient()
+  const clean: Record<string, unknown> = {}
+  if (updates.code != null) clean['code'] = String(updates.code).trim().toUpperCase()
+  if (updates.discount_type != null) clean['discount_type'] = updates.discount_type
+  if (updates.discount_value != null) clean['discount_value'] = Number(updates.discount_value)
+  if (updates.min_amount != null) clean['min_amount'] = Number(updates.min_amount)
+  if (updates.max_uses !== undefined) clean['max_uses'] = updates.max_uses
+  if (updates.expires_at !== undefined) clean['expires_at'] = updates.expires_at
+  if (updates.is_active != null) clean['is_active'] = Boolean(updates.is_active)
+  const { error } = await supabase.from('promo_codes').update(clean).eq('id', id)
+  if (error) { console.error('Error updating promo code:', error.message); return false }
+  return true
+}
+
+/** Supprime un code promo */
+export async function deletePromoCode(id: string): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('promo_codes').delete().eq('id', id)
+  if (error) { console.error('Error deleting promo code:', error); return false }
   return true
 }
 

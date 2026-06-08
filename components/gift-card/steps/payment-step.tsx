@@ -129,6 +129,9 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
   const [promoInput, setPromoInput] = useState('')
   const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [promoError, setPromoError] = useState<string | null>(null)
+  // Bon cadeau 100% offert (pas de Stripe)
+  const [isFree, setIsFree] = useState(false)
+  const [confirmingFree, setConfirmingFree] = useState(false)
 
   // Applique un code promo : recrée le PaymentIntent au montant remisé
   const applyPromo = async () => {
@@ -147,10 +150,20 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
         setPromoError(result.error ?? 'Code promo invalide')
         return
       }
+      const code = result.appliedPromo ?? promoInput.trim().toUpperCase()
+      // Cas 100% offert : pas de Stripe, on prépare la confirmation directe
+      if (result.free) {
+        setIsFree(true)
+        setChargeAmount(0)
+        setAppliedPromo({ code, discountAmount: result.discountAmount ?? baseTotal, finalAmount: 0 })
+        setPromoStatus('idle')
+        return
+      }
+      setIsFree(false)
       setClientSecret(result.clientSecret)
       setChargeAmount(result.amount ?? baseTotal)
       setAppliedPromo({
-        code: result.appliedPromo ?? promoInput.trim().toUpperCase(),
+        code,
         discountAmount: result.discountAmount ?? 0,
         finalAmount: result.amount ?? baseTotal,
       })
@@ -167,8 +180,31 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
     setPromoInput('')
     setPromoStatus('idle')
     setPromoError(null)
+    setIsFree(false)
     setClientSecret(data.clientSecret ?? null)
     setChargeAmount(baseTotal)
+  }
+
+  // Confirme un bon cadeau 100% offert (création serveur sans Stripe)
+  const confirmFree = async () => {
+    if (!appliedPromo) return
+    setConfirmingFree(true)
+    setPromoError(null)
+    try {
+      const res = await fetch('/api/gift-card/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...buildGiftIntentBody(data), promoCode: appliedPromo.code, finalize: true }),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.success) {
+        throw new Error(result.error ?? 'Erreur lors de la création du bon cadeau')
+      }
+      onNext({})
+    } catch (err) {
+      setConfirmingFree(false)
+      setPromoError(err instanceof Error ? err.message : 'Une erreur est survenue')
+    }
   }
 
   if (!clientSecret) {
@@ -277,35 +313,70 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
         )}
       </div>
 
-      <Elements
-        key={clientSecret}
-        stripe={stripePromise}
-        options={{
-          clientSecret,
-          appearance: {
-            theme: 'stripe',
-            variables: {
-              colorPrimary: '#b36d52',
-              colorBackground: '#ffffff',
-              borderRadius: '8px',
-              fontFamily: 'Arial, sans-serif',
-            },
-          },
-          locale: 'fr',
-        }}
-      >
-        <CheckoutForm
-          totalAmount={chargeAmount}
-          onSuccess={() => onNext({})}
-          onBack={onBack}
-        />
-      </Elements>
+      {isFree ? (
+        <div>
+          <div className="mb-4 p-4 rounded-xl bg-success/10 border border-success/20 text-success text-sm flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+            Votre code couvre la totalité : ce bon cadeau est offert, aucun paiement n&apos;est nécessaire.
+          </div>
+          {promoError && (
+            <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+              {promoError}
+            </div>
+          )}
+          <div className="flex justify-between gap-4">
+            <Button type="button" size="lg" variant="outline" onClick={onBack} disabled={confirmingFree} className="w-full sm:w-auto">
+              <ChevronLeft className="mr-2 h-5 w-5" />
+              Retour
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => void confirmFree()}
+              disabled={confirmingFree}
+              className="w-full sm:w-auto bg-gradient-to-r from-primary-600 to-primary-700"
+            >
+              {confirmingFree ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Confirmation…</>
+              ) : (
+                <><CheckCircle2 className="mr-2 h-5 w-5" /> Confirmer le bon cadeau</>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Elements
+            key={clientSecret}
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#b36d52',
+                  colorBackground: '#ffffff',
+                  borderRadius: '8px',
+                  fontFamily: 'Arial, sans-serif',
+                },
+              },
+              locale: 'fr',
+            }}
+          >
+            <CheckoutForm
+              totalAmount={chargeAmount}
+              onSuccess={() => onNext({})}
+              onBack={onBack}
+            />
+          </Elements>
 
-      {/* Badge sécurité */}
-      <div className="mt-6 flex items-center justify-center gap-2 text-xs text-foreground-secondary">
-        <Lock className="h-3 w-3" />
-        <span>Paiement 100% sécurisé · Powered by Stripe</span>
-      </div>
+          {/* Badge sécurité */}
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-foreground-secondary">
+            <Lock className="h-3 w-3" />
+            <span>Paiement 100% sécurisé · Powered by Stripe</span>
+          </div>
+        </>
+      )}
     </div>
   )
 }

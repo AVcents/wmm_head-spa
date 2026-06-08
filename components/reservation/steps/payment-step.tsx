@@ -199,6 +199,8 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
 
   // Montant effectivement facturé (après remise éventuelle)
   const effectiveTotal = appliedPromo ? appliedPromo.finalAmount : totalPrice
+  // Réservation 100% offerte par le code promo → pas de Stripe, confirmation directe
+  const isFree = appliedPromo != null && effectiveTotal === 0
 
   // Créer un intent Stripe (pour hold ou direct)
   const createStripeIntent = useCallback(
@@ -615,7 +617,36 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
         </p>
       </div>
 
+      {/* Réservation entièrement offerte par le code promo */}
+      {isFree && (
+        <div className="mb-8">
+          <div className="p-4 rounded-xl bg-success/10 border border-success/20 text-success text-sm flex items-center gap-2 mb-4">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+            Votre code couvre la totalité : cette réservation est offerte, aucun paiement n&apos;est nécessaire.
+          </div>
+          <button
+            type="button"
+            onClick={() => void confirmBooking('free', null, 0)}
+            disabled={!cgvAccepted || confirmingBooking}
+            className="w-full py-4 rounded-xl bg-primary-600 text-white font-semibold text-lg hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {confirmingBooking ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Confirmation en cours...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-5 w-5" />
+                Confirmer ma réservation
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Sélection du mode de paiement */}
+      {!isFree && (
       <div className="space-y-3 mb-8">
         <h3 className="text-lg font-medium text-foreground">
           Comment souhaitez-vous régler ?
@@ -748,6 +779,7 @@ export function PaymentStep({ booking, onConfirm, onBack }: Props) {
           </div>
         </button>
       </div>
+      )}
 
       {/* Zone bon cadeau */}
       {selectedMode === 'gift_card' && (

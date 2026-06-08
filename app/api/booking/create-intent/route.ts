@@ -67,6 +67,17 @@ export async function POST(req: NextRequest) {
 
     const amount = Math.round((baseTotal - discountAmount) * 100) / 100
 
+    // Réservation entièrement couverte par le code promo (100%) → on ne passe
+    // PAS par Stripe. Le wizard affichera un bouton de confirmation directe.
+    if (amount === 0) {
+      return NextResponse.json({
+        paymentType: 'free',
+        amount: 0,
+        discountAmount,
+        appliedPromo,
+      })
+    }
+
     if (amount < 1) {
       return errorJson('Le montant à régler est trop faible pour un paiement en ligne. Contactez le salon.')
     }

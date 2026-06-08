@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { applyPromoToTotal } from '@/lib/pricing'
+import { applyPromoToTotal, incrementPromoUsage } from '@/lib/pricing'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { sendGiftCardEmails } from '@/lib/email'
+import { GIFT_CARD_EXPIRY_DAYS } from '@/lib/gift-card'
 import type { GiftCardExtra, ShippingAddress } from '@/lib/gift-card'
+import type { GiftCardEmailData } from '@/lib/email'
 
 export interface CreatePaymentIntentBody {
   amount: number          // montant total en euros (incl. frais livraison)
   promoCode?: string      // code promo éventuel (remise sur le montant payé)
+  finalize?: boolean      // true = créer le bon cadeau gratuit (montant à 0)
   serviceId?: string
   serviceName?: string
   hairLengthLabel?: string
@@ -79,6 +84,92 @@ export async function POST(req: NextRequest) {
     }
 
     const chargeAmount = Math.round((body.amount - discount) * 100) / 100
+
+    // Générer un code bon cadeau court
+    const giftCardCode = `KH-${Date.now().toString(36).toUpperCase().slice(-6)}`
+
+    // Éléments communs aux deux chemins (payant / gratuit)
+    const extras = Array.isArray(body.extras) ? body.extras : []
+    const isPhysical = body.deliveryMethod === 'physical'
+    const ship = body.shippingAddress
+    const shipCountryISO = ship ? countryToISO(ship.country) : undefined
+    const giftAmount = Math.round((body.amount - body.deliveryFee) * 100) / 100
+
+    // ===========================
+    // Bon cadeau 100% offert par le code promo → pas de Stripe.
+    // ===========================
+    if (chargeAmount === 0) {
+      // Aperçu (clic "Appliquer") : on ne crée encore rien.
+      if (!body.finalize) {
+        return NextResponse.json({ free: true, amount: 0, discountAmount: discount, appliedPromo })
+      }
+      // Confirmation : créer le bon cadeau + emails + consommer le promo.
+      const emailData: GiftCardEmailData = {
+        giftCardCode,
+        paymentIntentId: '',
+        buyerEmail: body.buyerEmail,
+        buyerFirstName: body.buyerFirstName,
+        buyerLastName: body.buyerLastName,
+        ...(body.buyerPhone ? { buyerPhone: body.buyerPhone } : {}),
+        recipientEmail: body.recipientEmail ?? '',
+        recipientFirstName: body.recipientFirstName,
+        recipientLastName: body.recipientLastName,
+        ...(body.recipientPhone ? { recipientPhone: body.recipientPhone } : {}),
+        serviceName: body.serviceName ?? 'Bon cadeau libre',
+        ...(body.hairLengthLabel ? { hairLengthLabel: body.hairLengthLabel } : {}),
+        ...(extras.length ? { extras: extras.map((e) => ({ name: e.name, price: Number(e.price) })) } : {}),
+        giftAmount,
+        deliveryFee: body.deliveryFee,
+        totalAmount: giftAmount + body.deliveryFee,
+        deliveryMethod: isPhysical ? 'physical' : 'digital',
+        ...(isPhysical && body.shippingTo ? { shippingTo: body.shippingTo } : {}),
+        ...(isPhysical && ship ? { shippingAddress: ship } : {}),
+        ...(body.senderName ? { senderName: body.senderName } : {}),
+        ...(body.personalMessage ? { personalMessage: body.personalMessage.substring(0, 490) } : {}),
+      }
+
+      try {
+        const supabase = createAdminClient()
+        await supabase.from('gift_cards').insert({
+          code: giftCardCode,
+          service_id: body.serviceId && body.serviceId.length > 0 ? body.serviceId : null,
+          service_name: body.serviceName ?? null,
+          hair_length_label: body.hairLengthLabel || null,
+          amount: giftAmount,
+          delivery_fee: body.deliveryFee,
+          total_amount: giftAmount + body.deliveryFee,
+          delivery_method: isPhysical ? 'physical' : 'digital',
+          payment_intent_id: null,
+          buyer_email: body.buyerEmail || null,
+          buyer_first_name: body.buyerFirstName || null,
+          buyer_last_name: body.buyerLastName || null,
+          buyer_phone: body.buyerPhone || null,
+          recipient_email: body.recipientEmail || null,
+          recipient_first_name: body.recipientFirstName || null,
+          recipient_last_name: body.recipientLastName || null,
+          recipient_phone: body.recipientPhone || null,
+          extras: extras.length ? extras : null,
+          sender_name: body.senderName || null,
+          personal_message: body.personalMessage || null,
+          shipping_to: isPhysical ? body.shippingTo ?? 'recipient' : null,
+          shipping_street: isPhysical && ship ? ship.street : null,
+          shipping_city: isPhysical && ship ? ship.city : null,
+          shipping_postal_code: isPhysical && ship ? ship.postalCode : null,
+          shipping_country: isPhysical && ship ? ship.country : null,
+          expires_at: new Date(Date.now() + GIFT_CARD_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+        })
+        await sendGiftCardEmails(emailData)
+        if (appliedPromo) await incrementPromoUsage(appliedPromo)
+      } catch (e) {
+        console.error('[create-payment-intent] finalize free gift card:', e)
+        return NextResponse.json({ error: 'Erreur lors de la création du bon cadeau' }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        free: true, success: true, giftCardCode, amount: 0, discountAmount: discount, appliedPromo,
+      })
+    }
+
     if (chargeAmount < 1) {
       return NextResponse.json(
         { error: 'Le montant à régler est trop faible pour un paiement en ligne.' },
@@ -88,18 +179,10 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe()
 
-    // Générer un code bon cadeau court
-    const giftCardCode = `KH-${Date.now().toString(36).toUpperCase().slice(-6)}`
-
     // Sérialiser les extras de façon compacte pour les metadata (limite 500 car.)
-    const extras = Array.isArray(body.extras) ? body.extras : []
     const extrasMeta = JSON.stringify(
       extras.map((e) => ({ n: e.name, p: Number(e.price) }))
     ).slice(0, 490)
-
-    const isPhysical = body.deliveryMethod === 'physical'
-    const ship = body.shippingAddress
-    const shipCountryISO = ship ? countryToISO(ship.country) : undefined
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(chargeAmount * 100), // en centimes (montant remisé payé)

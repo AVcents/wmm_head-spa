@@ -15,7 +15,7 @@ import type { Extra } from './steps/extras-step'
 import { PaymentStep } from './steps/payment-step'
 import { ConfirmationStep } from './steps/confirmation-step'
 
-export type PaymentMode = 'hold' | 'direct' | 'gift_card'
+export type PaymentMode = 'hold' | 'direct' | 'gift_card' | 'free'
 
 export interface BookingState {
   service: Service | null

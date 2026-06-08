@@ -21,7 +21,10 @@
       "Bash(pnpm lint *)",
       "Bash(git fsck *)",
       "Bash(git fetch *)",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "Bash(pnpm build *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []

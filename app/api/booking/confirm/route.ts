@@ -32,7 +32,7 @@ interface ConfirmBody {
   price: number
   extras?: Array<{ name: string; price: number }>
   extrasTotal?: number
-  paymentMode: 'hold' | 'direct' | 'gift_card'
+  paymentMode: 'hold' | 'direct' | 'gift_card' | 'free'
 }
 
 // ---------- Route ----------
@@ -96,6 +96,17 @@ export async function POST(req: NextRequest) {
     // ===========================
     // 1. Vérifier le paiement
     // ===========================
+
+    // Réservation gratuite (code promo 100%) : pas de Stripe, mais on vérifie
+    // SERVEUR que le total est réellement à 0 (anti-fraude).
+    if (body.paymentMode === 'free') {
+      if (netTotal !== 0) {
+        return NextResponse.json(
+          { error: 'Cette réservation n\'est pas entièrement couverte par le code promo' },
+          { status: 400 }
+        )
+      }
+    }
 
     if (body.paymentMode === 'hold' || body.paymentMode === 'direct') {
       if (!body.paymentIntentId) {
@@ -201,7 +212,9 @@ export async function POST(req: NextRequest) {
       client_name:  body.clientName,
       client_email: body.clientEmail,
       client_phone: body.clientPhone,
-      payment_mode: body.paymentMode,
+      // 'free' n'est pas une valeur autorisée en base : on stocke 'in_person'
+      // (rien encaissé en ligne) — le promo_code + discount_amount tracent l'offre
+      payment_mode: body.paymentMode === 'free' ? 'in_person' : body.paymentMode,
       booked_by:    'client',
       service_name: body.serviceName,
       price:        netTotal,

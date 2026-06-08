@@ -18,7 +18,10 @@
       "Bash(pnpm install *)",
       "Read(//Users/cent/.local/share/pnpm/**)",
       "Read(//Users/cent/Library/pnpm/store/**)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(git fsck *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)"
     ],
     "deny": [],
     "ask": []

@@ -43,8 +43,10 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * PATCH /api/admin/gift-cards — Marquer un bon comme expédié / non expédié
- * Body : { id: string, shipped: boolean }
+ * PATCH /api/admin/gift-cards — Mettre à jour un bon
+ * Body : { id: string, shipped?: boolean, used?: boolean }
+ * - shipped : marquer comme expédié / non expédié (bons papier)
+ * - used    : marquer comme utilisé / non utilisé (réservation manuelle)
  */
 export async function PATCH(req: NextRequest) {
   const auth = await isAuthenticated()
@@ -54,16 +56,31 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { id, shipped } = body as { id?: string; shipped?: boolean }
+    const { id, shipped, used } = body as { id?: string; shipped?: boolean; used?: boolean }
 
     if (!id) {
       return NextResponse.json({ error: 'id requis' }, { status: 400 })
     }
 
+    const update: Record<string, unknown> = {}
+    if (typeof shipped === 'boolean') {
+      update['shipped_at'] = shipped ? new Date().toISOString() : null
+    }
+    if (typeof used === 'boolean') {
+      update['used'] = used
+      update['used_at'] = used ? new Date().toISOString() : null
+      // Réservation manuelle : pas de booking lié dans la BDD
+      update['used_booking_id'] = null
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 })
+    }
+
     const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('gift_cards')
-      .update({ shipped_at: shipped ? new Date().toISOString() : null })
+      .update(update)
       .eq('id', id)
       .select()
       .single()

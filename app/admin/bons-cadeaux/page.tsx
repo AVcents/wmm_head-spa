@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Copy,
   Search,
+  CheckCircle2,
+  RotateCcw,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -118,6 +120,28 @@ export default function AdminGiftCardsPage() {
       const updated: GiftCard = await res.json()
       setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, shipped_at: updated.shipped_at } : c)))
       show(shipped ? 'Bon marqué comme expédié' : 'Expédition annulée')
+    } catch {
+      show('Erreur lors de la mise à jour', 'error')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const toggleUsed = async (card: GiftCard) => {
+    setUpdatingId(card.id)
+    const used = !card.used
+    try {
+      const res = await fetch('/api/admin/gift-cards', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: card.id, used }),
+      })
+      if (!res.ok) throw new Error()
+      const updated: GiftCard = await res.json()
+      setCards((prev) =>
+        prev.map((c) => (c.id === card.id ? { ...c, used: updated.used, used_at: updated.used_at } : c))
+      )
+      show(used ? 'Bon marqué comme utilisé' : 'Bon remis comme non utilisé')
     } catch {
       show('Erreur lors de la mise à jour', 'error')
     } finally {
@@ -271,14 +295,22 @@ export default function AdminGiftCardsPage() {
                       )}
                     </div>
                     <div>
-                      <button
-                        onClick={() => copyCode(card.code)}
-                        className="flex items-center gap-1.5 font-bold text-foreground hover:text-primary-600 transition-colors"
-                        title="Copier le code"
-                      >
-                        {card.code}
-                        <Copy className="h-3.5 w-3.5 opacity-50" />
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => copyCode(card.code)}
+                          className="flex items-center gap-1.5 font-bold text-foreground hover:text-primary-600 transition-colors"
+                          title="Copier le code"
+                        >
+                          {card.code}
+                          <Copy className="h-3.5 w-3.5 opacity-50" />
+                        </button>
+                        {card.used && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Utilisé
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-foreground-secondary">
                         {formatDate(card.created_at)} · {isPhysical ? 'Papier' : 'Numérique'}
                       </p>
@@ -372,14 +404,40 @@ export default function AdminGiftCardsPage() {
                   )}
                 </div>
 
-                {card.personal_message && (
-                  <div className="mt-4 p-3 rounded-lg bg-background border border-border">
-                    <p className="text-xs font-semibold text-foreground-secondary uppercase tracking-wide mb-1">
-                      Message {card.sender_name ? `— de ${card.sender_name}` : ''}
-                    </p>
-                    <p className="text-sm text-foreground italic">“{card.personal_message}”</p>
-                  </div>
-                )}
+                {/* Action consommation (tous les bons) */}
+                <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                  {card.used ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Utilisé{card.used_at ? ` le ${formatDate(card.used_at)}` : ''}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground-secondary">
+                      <Gift className="h-4 w-4" />
+                      Non utilisé
+                    </span>
+                  )}
+                  <button
+                    onClick={() => toggleUsed(card)}
+                    disabled={updatingId === card.id}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
+                      card.used
+                        ? 'bg-surface border border-border text-foreground-secondary hover:text-foreground'
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    }`}
+                  >
+                    {updatingId === card.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : card.used ? (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Annuler
+                      </>
+                    ) : (
+                      'Marquer comme utilisé'
+                    )}
+                  </button>
+                </div>
 
                 {/* Action expédition (papier uniquement) */}
                 {isPhysical && (

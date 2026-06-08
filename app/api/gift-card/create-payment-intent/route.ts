@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
+import { applyPromoToTotal } from '@/lib/pricing'
 import type { GiftCardExtra, ShippingAddress } from '@/lib/gift-card'
 
 export interface CreatePaymentIntentBody {
   amount: number          // montant total en euros (incl. frais livraison)
+  promoCode?: string      // code promo éventuel (remise sur le montant payé)
   serviceId?: string
   serviceName?: string
   hairLengthLabel?: string
@@ -57,6 +59,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email destinataire manquant' }, { status: 400 })
     }
 
+    // ===========================
+    // Code promo — validation et remise calculées SERVEUR.
+    // La remise s'applique sur le montant payé par l'acheteur ; la valeur
+    // faciale du bon (giftAmount) reste pleine pour le destinataire.
+    // ===========================
+    let discount = 0
+    let appliedPromo: string | null = null
+    if (body.promoCode && body.promoCode.trim()) {
+      const promo = await applyPromoToTotal(body.promoCode, body.amount)
+      if (!promo.valid) {
+        return NextResponse.json(
+          { error: promo.error ?? 'Code promo invalide' },
+          { status: 400 }
+        )
+      }
+      discount = promo.discountAmount
+      appliedPromo = promo.code ?? null
+    }
+
+    const chargeAmount = Math.round((body.amount - discount) * 100) / 100
+    if (chargeAmount < 1) {
+      return NextResponse.json(
+        { error: 'Le montant à régler est trop faible pour un paiement en ligne.' },
+        { status: 400 }
+      )
+    }
+
     const stripe = getStripe()
 
     // Générer un code bon cadeau court
@@ -73,7 +102,7 @@ export async function POST(req: NextRequest) {
     const shipCountryISO = ship ? countryToISO(ship.country) : undefined
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(body.amount * 100), // en centimes
+      amount: Math.round(chargeAmount * 100), // en centimes (montant remisé payé)
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
       receipt_email: body.buyerEmail,
@@ -103,10 +132,13 @@ export async function POST(req: NextRequest) {
         hairLengthLabel: body.hairLengthLabel ?? '',
         // Extras
         extras: extrasMeta,
-        // Montants
+        // Montants — giftAmount = valeur faciale PLEINE (non remisée)
         giftAmount: String(body.amount - body.deliveryFee),
         deliveryFee: String(body.deliveryFee),
         deliveryMethod: body.deliveryMethod ?? 'digital',
+        // Code promo / remise (sur le montant payé uniquement)
+        promoCode: appliedPromo ?? '',
+        discount: String(discount),
         // Acheteur
         buyerEmail: body.buyerEmail,
         buyerFirstName: body.buyerFirstName,
@@ -133,6 +165,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+      amount: chargeAmount,
+      discountAmount: discount,
+      appliedPromo,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Check, Mail, Package, Gift } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
-import { deliveryFeeFor, extrasTotal, giftAmountOf, giftTotalOf, formatEuro } from '@/lib/gift-card'
+import { deliveryFeeFor, extrasTotal, giftAmountOf, giftTotalOf, formatEuro, buildGiftIntentBody } from '@/lib/gift-card'
 
 interface ReviewStepProps {
   data: GiftCardData
@@ -27,28 +27,7 @@ export function ReviewStep({ data, onNext, onBack }: ReviewStepProps) {
       const res = await fetch('/api/gift-card/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: totalAmount,
-          serviceId: data.serviceId ?? '',
-          serviceName: data.serviceName ?? 'Bon cadeau libre',
-          hairLengthLabel: data.hairLengthLabel ?? '',
-          deliveryMethod: data.deliveryMethod ?? 'digital',
-          deliveryFee,
-          extras: selectedExtras,
-          buyerEmail: data.buyerEmail ?? '',
-          buyerFirstName: data.buyerFirstName ?? '',
-          buyerLastName: data.buyerLastName ?? '',
-          buyerPhone: data.buyerPhone ?? '',
-          recipientEmail: data.recipientEmail ?? '',
-          recipientFirstName: data.recipientFirstName ?? '',
-          recipientLastName: data.recipientLastName ?? '',
-          recipientPhone: data.recipientPhone ?? '',
-          senderName: data.senderName ?? '',
-          personalMessage: data.personalMessage ?? '',
-          ...(data.deliveryMethod === 'physical' && data.shippingAddress
-            ? { shippingAddress: data.shippingAddress, shippingTo: data.shippingTo ?? 'recipient' }
-            : {}),
-        }),
+        body: JSON.stringify(buildGiftIntentBody(data)),
       })
       if (!res.ok) {
         const err = await res.json()

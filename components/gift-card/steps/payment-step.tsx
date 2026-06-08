@@ -9,9 +9,9 @@ import {
 } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Lock } from 'lucide-react'
+import { ChevronLeft, Lock, Ticket, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { GiftCardData } from '../gift-card-wizard'
-import { giftTotalOf } from '@/lib/gift-card'
+import { giftTotalOf, buildGiftIntentBody, formatEuro } from '@/lib/gift-card'
 
 // Initialisation Stripe (singleton)
 const stripePromise = loadStripe(
@@ -114,9 +114,64 @@ function CheckoutForm({
 // PaymentStep — wrappé dans <Elements>
 // -----------------------------------------------
 export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
-  const totalAmount = giftTotalOf(data)
+  const baseTotal = giftTotalOf(data)
 
-  if (!data.clientSecret) {
+  // clientSecret / montant gérés en état : recréés si un code promo est appliqué
+  const [clientSecret, setClientSecret] = useState<string | null>(data.clientSecret ?? null)
+  const [chargeAmount, setChargeAmount] = useState<number>(baseTotal)
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string
+    discountAmount: number
+    finalAmount: number
+  } | null>(null)
+
+  // État du champ code promo
+  const [promoInput, setPromoInput] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [promoError, setPromoError] = useState<string | null>(null)
+
+  // Applique un code promo : recrée le PaymentIntent au montant remisé
+  const applyPromo = async () => {
+    if (!promoInput.trim()) return
+    setPromoStatus('loading')
+    setPromoError(null)
+    try {
+      const res = await fetch('/api/gift-card/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...buildGiftIntentBody(data), promoCode: promoInput.trim() }),
+      })
+      const result = await res.json()
+      if (!res.ok || result.error) {
+        setPromoStatus('error')
+        setPromoError(result.error ?? 'Code promo invalide')
+        return
+      }
+      setClientSecret(result.clientSecret)
+      setChargeAmount(result.amount ?? baseTotal)
+      setAppliedPromo({
+        code: result.appliedPromo ?? promoInput.trim().toUpperCase(),
+        discountAmount: result.discountAmount ?? 0,
+        finalAmount: result.amount ?? baseTotal,
+      })
+      setPromoStatus('idle')
+    } catch {
+      setPromoStatus('error')
+      setPromoError('Erreur de validation du code')
+    }
+  }
+
+  // Retire le code : restaure le PaymentIntent plein tarif initial
+  const removePromo = () => {
+    setAppliedPromo(null)
+    setPromoInput('')
+    setPromoStatus('idle')
+    setPromoError(null)
+    setClientSecret(data.clientSecret ?? null)
+    setChargeAmount(baseTotal)
+  }
+
+  if (!clientSecret) {
     return (
       <div className="bg-surface border border-border rounded-2xl p-8 text-center">
         <p className="text-foreground-secondary">
@@ -142,17 +197,91 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
       </div>
 
       {/* Récapitulatif montant */}
-      <div className="mb-6 p-4 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 flex justify-between items-center">
-        <span className="text-sm font-medium text-foreground-secondary">Total à régler</span>
-        <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-          {totalAmount}€
-        </span>
+      <div className="mb-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800">
+        {appliedPromo && (
+          <div className="flex justify-between items-center text-success text-sm mb-2">
+            <span className="flex items-center gap-1.5">
+              <Ticket className="h-4 w-4" /> Code {appliedPromo.code}
+            </span>
+            <span className="font-medium">−{formatEuro(appliedPromo.discountAmount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium text-foreground-secondary">Total à régler</span>
+          <span className="flex items-baseline gap-2">
+            {appliedPromo && (
+              <span className="text-base text-foreground-muted line-through">{formatEuro(baseTotal)}</span>
+            )}
+            <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+              {formatEuro(chargeAmount)}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* Champ code promo */}
+      <div className="mb-6">
+        {!appliedPromo ? (
+          <div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => {
+                  setPromoInput(e.target.value.toUpperCase())
+                  if (promoStatus === 'error') {
+                    setPromoStatus('idle')
+                    setPromoError(null)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void applyPromo()
+                  }
+                }}
+                placeholder="Code promo"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-surface text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all text-sm font-mono tracking-wider"
+              />
+              <button
+                type="button"
+                onClick={() => void applyPromo()}
+                disabled={!promoInput.trim() || promoStatus === 'loading'}
+                className="px-5 py-2.5 rounded-xl border border-primary-600 text-primary-700 dark:text-primary-300 font-medium text-sm hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50 transition-colors flex-shrink-0"
+              >
+                {promoStatus === 'loading'
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : 'Appliquer'}
+              </button>
+            </div>
+            {promoStatus === 'error' && promoError && (
+              <p className="mt-2 text-sm text-error flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                {promoError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-success/10 border border-success/20">
+            <span className="text-sm text-success flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Code <strong>{appliedPromo.code}</strong> appliqué
+            </span>
+            <button
+              type="button"
+              onClick={removePromo}
+              className="text-xs text-foreground-secondary hover:text-error underline transition-colors"
+            >
+              Retirer
+            </button>
+          </div>
+        )}
       </div>
 
       <Elements
+        key={clientSecret}
         stripe={stripePromise}
         options={{
-          clientSecret: data.clientSecret,
+          clientSecret,
           appearance: {
             theme: 'stripe',
             variables: {
@@ -166,7 +295,7 @@ export function PaymentStep({ data, onNext, onBack }: PaymentStepProps) {
         }}
       >
         <CheckoutForm
-          totalAmount={totalAmount}
+          totalAmount={chargeAmount}
           onSuccess={() => onNext({})}
           onBack={onBack}
         />

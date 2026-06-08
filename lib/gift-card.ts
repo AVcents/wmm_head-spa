@@ -60,6 +60,66 @@ export function giftTotalOf(input: {
   return giftAmountOf(input) + deliveryFeeFor(input.deliveryMethod)
 }
 
+/**
+ * Sous-ensemble structurel des données du tunnel bon cadeau nécessaires
+ * pour construire le body de l'API create-payment-intent. Découple lib/
+ * du composant GiftCardData (qui est structurellement compatible).
+ */
+export interface GiftIntentInput {
+  serviceId?: string
+  serviceName?: string
+  hairLengthLabel?: string
+  deliveryMethod?: 'digital' | 'physical'
+  amount?: number
+  extras?: GiftCardExtra[]
+  buyerEmail?: string
+  buyerFirstName?: string
+  buyerLastName?: string
+  buyerPhone?: string
+  recipientEmail?: string
+  recipientFirstName?: string
+  recipientLastName?: string
+  recipientPhone?: string
+  senderName?: string
+  personalMessage?: string
+  shippingAddress?: ShippingAddress
+  shippingTo?: 'recipient' | 'buyer'
+}
+
+/**
+ * Construit le corps de requête pour /api/gift-card/create-payment-intent.
+ * Source unique utilisée par l'étape Récapitulatif et l'étape Paiement
+ * (cette dernière le réutilise pour recréer le PI quand un code promo
+ * est appliqué). Le code promo éventuel est ajouté par l'appelant.
+ */
+export function buildGiftIntentBody(data: GiftIntentInput): Record<string, unknown> {
+  const deliveryFee = deliveryFeeFor(data.deliveryMethod)
+  const body: Record<string, unknown> = {
+    amount: giftTotalOf(data),
+    serviceId: data.serviceId ?? '',
+    serviceName: data.serviceName ?? 'Bon cadeau libre',
+    hairLengthLabel: data.hairLengthLabel ?? '',
+    deliveryMethod: data.deliveryMethod ?? 'digital',
+    deliveryFee,
+    extras: data.extras ?? [],
+    buyerEmail: data.buyerEmail ?? '',
+    buyerFirstName: data.buyerFirstName ?? '',
+    buyerLastName: data.buyerLastName ?? '',
+    buyerPhone: data.buyerPhone ?? '',
+    recipientEmail: data.recipientEmail ?? '',
+    recipientFirstName: data.recipientFirstName ?? '',
+    recipientLastName: data.recipientLastName ?? '',
+    recipientPhone: data.recipientPhone ?? '',
+    senderName: data.senderName ?? '',
+    personalMessage: data.personalMessage ?? '',
+  }
+  if (data.deliveryMethod === 'physical' && data.shippingAddress) {
+    body['shippingAddress'] = data.shippingAddress
+    body['shippingTo'] = data.shippingTo ?? 'recipient'
+  }
+  return body
+}
+
 /** Formatte un prix en euros (ex: 70 → "70 €", 12.5 → "12,50 €"). */
 export function formatEuro(value: number): string {
   const rounded = Math.round(value * 100) / 100

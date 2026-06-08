@@ -3,6 +3,7 @@ import { getStripe } from '@/lib/stripe'
 import { sendGiftCardEmails } from '@/lib/email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getBookingByPaymentIntent, updateBookingStatus } from '@/lib/supabase/bookings'
+import { incrementPromoUsage } from '@/lib/pricing'
 import type { GiftCardEmailData } from '@/lib/email'
 
 // Désactiver le body parsing automatique — Stripe a besoin du raw body pour vérifier la signature
@@ -155,6 +156,14 @@ export async function POST(req: NextRequest) {
           ).toISOString(),
         })
         console.log('[webhook] Gift card saved to Supabase:', meta['giftCardCode'])
+
+        // Consommer le code promo éventuel (idempotent : on n'arrive ici
+        // qu'une fois par PaymentIntent grâce au check d'existence en amont)
+        const promoCode = meta['promoCode']
+        if (promoCode && promoCode.trim()) {
+          await incrementPromoUsage(promoCode)
+          console.log('[webhook] Promo consommé (gift card):', promoCode)
+        }
       } catch (dbErr) {
         console.error('[webhook] Failed to save gift card to Supabase:', dbErr)
         // Ne pas bloquer — l'email a déjà été envoyé

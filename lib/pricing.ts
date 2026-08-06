@@ -10,6 +10,7 @@
 // ============================================
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { GIFT_CARD_DELIVERY_FEE } from '@/lib/gift-card'
 import type { PromoCodeRow } from '@/lib/supabase/types'
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -18,6 +19,22 @@ export interface BookingPriceInput {
   serviceId: string
   variantId?: string | null
   extraIds?: string[]
+}
+
+export interface GiftCardPriceInput {
+  serviceId?: string | null
+  variantId?: string | null
+  extraIds?: string[]
+  deliveryMethod?: string | null
+}
+
+export interface GiftCardPrice {
+  /** Valeur faciale du bon = prestation + options (hors livraison) */
+  giftAmount: number
+  /** Frais d'expédition (bon papier uniquement) */
+  deliveryFee: number
+  /** Total réellement dû par l'acheteur */
+  total: number
 }
 
 export interface PromoResult {
@@ -81,15 +98,20 @@ export async function computeBookingTotal(
 
   // Prix des extras : on relit les prix réels des extras actifs sélectionnés
   let extrasTotal = 0
-  const extraIds = (input.extraIds ?? []).filter(Boolean)
+  const extraIds = [...new Set((input.extraIds ?? []).filter(Boolean))]
   if (extraIds.length > 0) {
     const { data: extras, error } = await supabase
       .from('extras')
-      .select('price')
+      .select('id, price')
       .in('id', extraIds)
       .eq('is_active', true)
     if (error) {
       throw new Error('Erreur de lecture des extras')
+    }
+    // Une option désactivée (ou inexistante) ne doit PAS disparaître
+    // silencieusement du total : sinon le client la reçoit sans la payer.
+    if ((extras ?? []).length !== extraIds.length) {
+      throw new Error('Une option sélectionnée n\'est plus disponible')
     }
     extrasTotal = (extras ?? []).reduce(
       (sum, e) => sum + Number((e as { price: number }).price),
@@ -98,6 +120,61 @@ export async function computeBookingTotal(
   }
 
   return round2(servicePrice + extrasTotal)
+}
+
+// ─── Total d'un bon cadeau depuis la DB ─────────────────────────
+
+/**
+ * Recalcule le montant d'un bon cadeau à partir des prix stockés.
+ * Même principe que computeBookingTotal : le navigateur ne fixe jamais
+ * le prix, il ne fait que l'afficher.
+ *
+ * Un service à variantes EXIGE un variantId — sans lui on ne peut pas
+ * connaître le tarif, et accepter le montant du client rouvrirait la faille.
+ */
+export async function computeGiftCardTotal(
+  input: GiftCardPriceInput
+): Promise<GiftCardPrice> {
+  // NOTE : le bon cadeau à montant libre (service_id NULL) n'existe pas
+  // encore. Le jour où il arrivera, c'est ici qu'il faudra brancher une
+  // validation de fourchette plutôt qu'un refus sec.
+  if (!input.serviceId) {
+    throw new Error('Prestation requise pour calculer le montant du bon cadeau')
+  }
+
+  const supabase = createAdminClient()
+  const { data: service, error } = await supabase
+    .from('services')
+    .select('has_variants')
+    .eq('id', input.serviceId)
+    .single()
+
+  if (error || !service) {
+    throw new Error('Prestation introuvable')
+  }
+
+  const hasVariants = Boolean((service as { has_variants: boolean }).has_variants)
+  if (hasVariants && !input.variantId) {
+    throw new Error('Longueur de cheveux requise pour cette prestation')
+  }
+  if (!hasVariants && input.variantId) {
+    throw new Error('Variante incohérente avec la prestation')
+  }
+
+  const giftAmount = await computeBookingTotal({
+    serviceId: input.serviceId,
+    variantId: input.variantId ?? null,
+    extraIds: input.extraIds ?? [],
+  })
+
+  const deliveryFee =
+    input.deliveryMethod === 'physical' ? GIFT_CARD_DELIVERY_FEE : 0
+
+  return {
+    giftAmount,
+    deliveryFee,
+    total: round2(giftAmount + deliveryFee),
+  }
 }
 
 // ─── Application d'un code promo ────────────────────────────────

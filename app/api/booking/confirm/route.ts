@@ -169,11 +169,57 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      if (new Date((card as { expires_at: string }).expires_at) < new Date()) {
+        return NextResponse.json(
+          { error: 'Ce bon cadeau a expiré' },
+          { status: 400 }
+        )
+      }
+
+      // Un bon rattaché à une prestation ne vaut que pour celle-ci.
+      const cardServiceId = (card as { service_id: string | null }).service_id
+      if (cardServiceId && cardServiceId !== body.serviceId) {
+        return NextResponse.json(
+          { error: 'Ce bon cadeau n\'est pas valable pour cette prestation' },
+          { status: 400 }
+        )
+      }
+
+      // ── Le bon doit réellement couvrir la note ──────────────────
+      // create-intent imposait déjà le complément CB, mais confirm ne le
+      // revérifiait pas : la protection n'existait qu'à l'écran. On la
+      // rejoue ici, côté serveur, avec le total recalculé.
+      const cardAmount = Number((card as { amount: number }).amount)
+      const remaining = Math.round((netTotal - cardAmount) * 100) / 100
+
+      if (remaining > 0 && !body.paymentIntentId) {
+        return NextResponse.json(
+          {
+            error: `Ce bon cadeau de ${cardAmount} € ne couvre pas la totalité (${netTotal} €). Un complément de ${remaining} € doit être réglé.`,
+          },
+          { status: 400 }
+        )
+      }
+
       if (body.paymentIntentId) {
         const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId)
         if (pi.status !== 'succeeded') {
           return NextResponse.json(
             { error: `Paiement complémentaire non confirmé (status: ${pi.status})` },
+            { status: 400 }
+          )
+        }
+
+        // Le complément encaissé doit correspondre au reste à charge.
+        const expectedCents = Math.round(Math.max(remaining, 0) * 100)
+        if (pi.amount !== expectedCents) {
+          console.error(
+            '[confirm] Complément incohérent — pi.amount:', pi.amount,
+            '/ attendu (cts):', expectedCents,
+            '/ bon:', body.giftCardCode, '/ pi:', pi.id
+          )
+          return NextResponse.json(
+            { error: 'Montant du complément incohérent avec le paiement' },
             { status: 400 }
           )
         }

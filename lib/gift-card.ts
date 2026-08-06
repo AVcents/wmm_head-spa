@@ -30,8 +30,17 @@ export interface ShippingAddress {
   country: string
 }
 
+/**
+ * Champs monétaires optionnels du tunnel. `| undefined` est explicite :
+ * changer de prestation remet ces valeurs à zéro (exactOptionalPropertyTypes).
+ */
+export interface GiftAmountInput {
+  amount?: number | null | undefined
+  extras?: GiftCardExtra[] | null | undefined
+}
+
 /** Somme des extras sélectionnés. */
-export function extrasTotal(extras?: GiftCardExtra[] | null): number {
+export function extrasTotal(extras?: GiftCardExtra[] | null | undefined): number {
   if (!extras || extras.length === 0) return 0
   return extras.reduce((sum, e) => sum + Number(e.price || 0), 0)
 }
@@ -45,18 +54,16 @@ export function deliveryFeeFor(deliveryMethod?: string | null): number {
  * Montant du bon (valeur utilisable par le destinataire) =
  * prix de la prestation + extras. N'inclut PAS les frais de livraison.
  */
-export function giftAmountOf(input: { amount?: number | null; extras?: GiftCardExtra[] | null }): number {
+export function giftAmountOf(input: GiftAmountInput): number {
   return Number(input.amount || 0) + extrasTotal(input.extras)
 }
 
 /**
  * Total à régler = montant du bon + frais de livraison.
  */
-export function giftTotalOf(input: {
-  amount?: number | null
-  extras?: GiftCardExtra[] | null
-  deliveryMethod?: string | null
-}): number {
+export function giftTotalOf(
+  input: GiftAmountInput & { deliveryMethod?: string | null | undefined }
+): number {
   return giftAmountOf(input) + deliveryFeeFor(input.deliveryMethod)
 }
 
@@ -68,10 +75,11 @@ export function giftTotalOf(input: {
 export interface GiftIntentInput {
   serviceId?: string
   serviceName?: string
-  hairLengthLabel?: string
+  variantId?: string | undefined
+  hairLengthLabel?: string | undefined
   deliveryMethod?: 'digital' | 'physical'
-  amount?: number
-  extras?: GiftCardExtra[]
+  amount?: number | undefined
+  extras?: GiftCardExtra[] | undefined
   buyerEmail?: string
   buyerFirstName?: string
   buyerLastName?: string
@@ -95,9 +103,12 @@ export interface GiftIntentInput {
 export function buildGiftIntentBody(data: GiftIntentInput): Record<string, unknown> {
   const deliveryFee = deliveryFeeFor(data.deliveryMethod)
   const body: Record<string, unknown> = {
+    // `amount` n'est qu'un CONTRÔLE : le serveur recalcule le vrai total et
+    // refuse la commande en cas d'écart (cf. computeGiftCardTotal).
     amount: giftTotalOf(data),
     serviceId: data.serviceId ?? '',
     serviceName: data.serviceName ?? 'Bon cadeau libre',
+    variantId: data.variantId ?? '',
     hairLengthLabel: data.hairLengthLabel ?? '',
     deliveryMethod: data.deliveryMethod ?? 'digital',
     deliveryFee,

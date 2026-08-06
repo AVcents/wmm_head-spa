@@ -24,7 +24,13 @@
       "Bash(git ls-remote *)",
       "Bash(pnpm build *)",
       "Bash(echo \"EXIT: $?\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Read(//Users/cent/Documents/Agence/Clients/Kalm Headspa/**)",
+      "Read(//Users/cent/Documents/Agence/memory/projects/**)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "Bash(perl -0pi -e ' *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT=$?\")"
     ],
     "deny": [],
     "ask": []

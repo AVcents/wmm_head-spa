@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { applyPromoToTotal, incrementPromoUsage } from '@/lib/pricing'
+import {
+  applyPromoToTotal,
+  incrementPromoUsage,
+  computeGiftCardTotal,
+} from '@/lib/pricing'
+import type { GiftCardPrice } from '@/lib/pricing'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendGiftCardEmails } from '@/lib/email'
 import { GIFT_CARD_EXPIRY_DAYS } from '@/lib/gift-card'
@@ -8,14 +13,15 @@ import type { GiftCardExtra, ShippingAddress } from '@/lib/gift-card'
 import type { GiftCardEmailData } from '@/lib/email'
 
 export interface CreatePaymentIntentBody {
-  amount: number          // montant total en euros (incl. frais livraison)
+  amount: number          // montant affiché au client — CONTRÔLE uniquement
   promoCode?: string      // code promo éventuel (remise sur le montant payé)
   finalize?: boolean      // true = créer le bon cadeau gratuit (montant à 0)
   serviceId?: string
   serviceName?: string
+  variantId?: string      // variante (longueur) — fait foi pour le tarif
   hairLengthLabel?: string
   deliveryMethod?: string
-  deliveryFee: number
+  deliveryFee?: number     // ignoré : recalculé serveur depuis deliveryMethod
   extras?: GiftCardExtra[]
   buyerEmail: string
   buyerFirstName: string
@@ -53,15 +59,58 @@ export async function POST(req: NextRequest) {
     const body: CreatePaymentIntentBody = await req.json()
 
     // Validation minimale
-    if (!body.amount || body.amount < 1) {
-      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    }
     if (!body.buyerEmail) {
       return NextResponse.json({ error: 'Email acheteur manquant' }, { status: 400 })
     }
     // L'email destinataire n'est requis que pour l'envoi numérique.
     if (body.deliveryMethod !== 'physical' && !body.recipientEmail) {
       return NextResponse.json({ error: 'Email destinataire manquant' }, { status: 400 })
+    }
+
+    // ===========================
+    // Montant AUTORITAIRE recalculé serveur.
+    // Le navigateur n'a jamais eu son mot à dire sur le prix d'une
+    // réservation ; il ne l'a plus non plus sur celui d'un bon cadeau.
+    // ===========================
+    const extrasIn = Array.isArray(body.extras) ? body.extras : []
+    let priced: GiftCardPrice
+    try {
+      priced = await computeGiftCardTotal({
+        serviceId: body.serviceId ?? null,
+        variantId: body.variantId && body.variantId.length > 0 ? body.variantId : null,
+        extraIds: extrasIn.map((e) => e.id).filter(Boolean),
+        deliveryMethod: body.deliveryMethod ?? 'digital',
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Montant invalide'
+      console.error('[create-payment-intent] tarif introuvable:', msg, {
+        serviceId: body.serviceId,
+        variantId: body.variantId,
+      })
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+
+    // Le total affiché doit correspondre au tarif réel. En cas d'écart on
+    // refuse au lieu d'encaisser : ni le client ni le salon ne doivent
+    // découvrir la différence après coup.
+    const clientAmount = Math.round(Number(body.amount ?? 0) * 100) / 100
+    if (Math.abs(clientAmount - priced.total) > 0.01) {
+      console.error(
+        '[create-payment-intent] écart de montant — affiché:', clientAmount,
+        '/ réel:', priced.total,
+        '/ service:', body.serviceId, '/ variante:', body.variantId
+      )
+      return NextResponse.json(
+        {
+          error:
+            'Le montant affiché ne correspond pas au tarif en vigueur. Merci de reprendre votre commande depuis le choix de la prestation.',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (priced.total < 1) {
+      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
     }
 
     // ===========================
@@ -72,7 +121,7 @@ export async function POST(req: NextRequest) {
     let discount = 0
     let appliedPromo: string | null = null
     if (body.promoCode && body.promoCode.trim()) {
-      const promo = await applyPromoToTotal(body.promoCode, body.amount)
+      const promo = await applyPromoToTotal(body.promoCode, priced.total)
       if (!promo.valid) {
         return NextResponse.json(
           { error: promo.error ?? 'Code promo invalide' },
@@ -83,17 +132,18 @@ export async function POST(req: NextRequest) {
       appliedPromo = promo.code ?? null
     }
 
-    const chargeAmount = Math.round((body.amount - discount) * 100) / 100
+    const chargeAmount = Math.round((priced.total - discount) * 100) / 100
 
     // Générer un code bon cadeau court
     const giftCardCode = `KH-${Date.now().toString(36).toUpperCase().slice(-6)}`
 
     // Éléments communs aux deux chemins (payant / gratuit)
-    const extras = Array.isArray(body.extras) ? body.extras : []
+    const extras = extrasIn
     const isPhysical = body.deliveryMethod === 'physical'
     const ship = body.shippingAddress
     const shipCountryISO = ship ? countryToISO(ship.country) : undefined
-    const giftAmount = Math.round((body.amount - body.deliveryFee) * 100) / 100
+    const giftAmount = priced.giftAmount
+    const deliveryFee = priced.deliveryFee
 
     // ===========================
     // Bon cadeau 100% offert par le code promo → pas de Stripe.
@@ -119,8 +169,8 @@ export async function POST(req: NextRequest) {
         ...(body.hairLengthLabel ? { hairLengthLabel: body.hairLengthLabel } : {}),
         ...(extras.length ? { extras: extras.map((e) => ({ name: e.name, price: Number(e.price) })) } : {}),
         giftAmount,
-        deliveryFee: body.deliveryFee,
-        totalAmount: giftAmount + body.deliveryFee,
+        deliveryFee,
+        totalAmount: priced.total,
         deliveryMethod: isPhysical ? 'physical' : 'digital',
         ...(isPhysical && body.shippingTo ? { shippingTo: body.shippingTo } : {}),
         ...(isPhysical && ship ? { shippingAddress: ship } : {}),
@@ -136,8 +186,8 @@ export async function POST(req: NextRequest) {
           service_name: body.serviceName ?? null,
           hair_length_label: body.hairLengthLabel || null,
           amount: giftAmount,
-          delivery_fee: body.deliveryFee,
-          total_amount: giftAmount + body.deliveryFee,
+          delivery_fee: deliveryFee,
+          total_amount: priced.total,
           delivery_method: isPhysical ? 'physical' : 'digital',
           payment_intent_id: null,
           buyer_email: body.buyerEmail || null,
@@ -216,8 +266,8 @@ export async function POST(req: NextRequest) {
         // Extras
         extras: extrasMeta,
         // Montants — giftAmount = valeur faciale PLEINE (non remisée)
-        giftAmount: String(body.amount - body.deliveryFee),
-        deliveryFee: String(body.deliveryFee),
+        giftAmount: String(giftAmount),
+        deliveryFee: String(deliveryFee),
         deliveryMethod: body.deliveryMethod ?? 'digital',
         // Code promo / remise (sur le montant payé uniquement)
         promoCode: appliedPromo ?? '',

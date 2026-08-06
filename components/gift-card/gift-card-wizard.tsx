@@ -21,15 +21,18 @@ import { giftTotalOf } from '@/lib/gift-card'
 
 export interface GiftCardData {
   // Service selection
+  // Les champs dépendant de la prestation acceptent explicitement `undefined` :
+  // changer de soin doit pouvoir les remettre à zéro (cf. handleNext).
   serviceId?: string
   serviceName?: string
-  serviceDuration?: number
-  hairLength?: 'courts' | 'mi-longs' | 'longs' | 'rases' | 'enfant' | 'body'
-  hairLengthLabel?: string
-  amount?: number
+  serviceDuration?: number | undefined
+  variantId?: string | undefined
+  hairLength?: 'courts' | 'mi-longs' | 'longs' | 'rases' | 'enfant' | 'body' | undefined
+  hairLengthLabel?: string | undefined
+  amount?: number | undefined
 
   // Extras step
-  extras?: GiftCardExtra[]
+  extras?: GiftCardExtra[] | undefined
 
   // Delivery step
   deliveryMethod?: 'digital' | 'physical'
@@ -105,6 +108,12 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     if (urlHairLength) {
       const hl = urlHairLength as NonNullable<GiftCardData['hairLength']>
       data.hairLength = hl
+      // Retrouver la variante correspondante : c'est elle qui fait autorité
+      // côté serveur pour le calcul du prix.
+      const variant = preselectedService?.variants?.find(
+        (v) => v.hairLength === hl
+      )
+      if (variant) data.variantId = variant.id
     }
     if (urlHairLengthLabel) data.hairLengthLabel = urlHairLengthLabel
     if (urlDuration) data.serviceDuration = parseInt(urlDuration)
@@ -132,8 +141,11 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     return () => clearTimeout(timer)
   }, [currentStep])
 
-  // Calcul des étapes visibles selon le contexte
-  const getVisibleSteps = () => {
+  // Calcul des étapes visibles selon le contexte.
+  // `serviceIdOverride` sert à raisonner sur la prestation qu'on VIENT de
+  // choisir : dans handleNext, le state React n'est pas encore à jour et se
+  // fier à formData ferait naviguer avec la liste d'étapes de l'ancien soin.
+  const getVisibleSteps = (serviceIdOverride?: string | undefined) => {
     let stepsToShow = [...baseSteps]
 
     // Masquer AmountStep si service pré-sélectionné depuis l'URL
@@ -142,7 +154,7 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     }
 
     // Masquer HairLengthStep si le service n'a pas de variantes
-    const serviceId = formData.serviceId ?? urlServiceId
+    const serviceId = serviceIdOverride ?? formData.serviceId ?? urlServiceId
     if (serviceId) {
       const service = services.find((s) => s.id === serviceId)
       if (!service?.hasVariants) {
@@ -160,29 +172,48 @@ export function GiftCardWizard({ services }: GiftCardWizardProps) {
     steps.find((s) => s.id === currentStep)?.component ?? AmountStep
 
   const handleNext = (data: Partial<GiftCardData>) => {
-    const newFormData = { ...formData, ...data }
+    // Changer de prestation invalide tout ce qui en dépend. Sans ce reset,
+    // le prix (et la longueur) du soin précédent survivaient jusqu'au
+    // paiement — c'est ce qui a produit des bons au mauvais tarif.
+    const serviceChanged =
+      data.serviceId !== undefined && data.serviceId !== formData.serviceId
+
+    const newFormData: GiftCardData = {
+      ...formData,
+      ...(serviceChanged
+        ? {
+            amount: undefined,
+            variantId: undefined,
+            hairLength: undefined,
+            hairLengthLabel: undefined,
+            serviceDuration: undefined,
+            extras: undefined,
+          }
+        : {}),
+      ...data,
+    }
     setFormData(newFormData)
 
-    const currentIndex = steps.findIndex((s) => s.id === currentStep)
-    const isLastStep = currentIndex === steps.length - 1
+    // Les étapes visibles doivent être recalculées à partir de la prestation
+    // qu'on vient de choisir, sinon l'étape « Longueur » peut être sautée.
+    const nextSteps = getVisibleSteps(newFormData.serviceId)
+    const currentIndex = nextSteps.findIndex((s) => s.id === currentStep)
+
+    // Étape courante absente de la nouvelle liste : on repart du début plutôt
+    // que de naviguer au hasard (ne devrait pas arriver).
+    if (currentIndex === -1) {
+      const first = nextSteps[0]
+      if (first) setCurrentStep(first.id)
+      return
+    }
 
     // Dernière étape (Paiement) → succès
-    if (isLastStep) {
+    if (currentIndex === nextSteps.length - 1) {
       setIsComplete(true)
       return
     }
 
-    // Cas spécial : service sans variantes sélectionné à l'étape 1 → sauter HairLength
-    if (currentStep === 1 && data.serviceId) {
-      const service = services.find((s) => s.id === data.serviceId)
-      if (service && !service.hasVariants) {
-        setCurrentStep(3)
-        return
-      }
-    }
-
-    // Naviguer vers l'étape suivante dans le tableau filtré
-    const nextStep = steps[currentIndex + 1]
+    const nextStep = nextSteps[currentIndex + 1]
     if (nextStep) {
       setCurrentStep(nextStep.id)
     }

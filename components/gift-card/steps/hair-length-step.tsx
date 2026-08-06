@@ -14,7 +14,9 @@ interface HairLengthStepProps {
 }
 
 export function HairLengthStep({ data, onNext, onBack, services: servicesProp }: HairLengthStepProps) {
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(
+    data.variantId ?? null
+  )
 
   const services = servicesProp ?? []
   const service = services.find((s) => s.id === data.serviceId)
@@ -30,6 +32,7 @@ export function HairLengthStep({ data, onNext, onBack, services: servicesProp }:
       const variant = service.variants?.find((v) => v.id === selectedVariant)
       if (variant) {
         onNext({
+          variantId: variant.id,
           hairLength: variant.hairLength,
           hairLengthLabel: variant.hairLengthLabel,
           amount: variant.price,

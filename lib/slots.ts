@@ -104,8 +104,8 @@ function resolveWeekBlocks(
 /**
  * Génère les créneaux disponibles pour un service/variant à une date donnée.
  *
- * @param cacheKey   Clé de cache = variantId si disponible, sinon serviceId
- * @param duration   Durée du soin en minutes
+ * @param cacheKey   Identifiant du soin = variantId si disponible, sinon serviceId
+ * @param duration   Durée TOTALE du soin en minutes (extras inclus)
  * @param date       Date YYYY-MM-DD
  * @param adminMode  Si true, pas de filtre 24h minimum
  */
@@ -115,9 +115,15 @@ export async function generateSlots(
   date: string,
   adminMode = false
 ): Promise<Slot[]> {
+  // La durée fait partie de la clé de cache : sans elle, des créneaux
+  // calculés avec un extra (ex. +15 min) étaient resservis à un client
+  // qui n'en avait pas pris — et inversement. On obtenait alors une
+  // réservation dont le créneau ne correspondait pas aux options payées.
+  const cacheId = `${cacheKey}:${duration}`
+
   // ── 1. Cache (uniquement en mode public) ──────────────────────
   if (!adminMode) {
-    const cached = await getCachedSlots(cacheKey, date)
+    const cached = await getCachedSlots(cacheId, date)
     if (cached) {
       return applyAdvanceFilter(
         cached.map(c => ({ starts_at: c.starts_at, ends_at: c.ends_at })),
@@ -237,7 +243,7 @@ export async function generateSlots(
   // ── 6. Mettre en cache (sans filtre 24h) ──────────────────────
   if (!adminMode) {
     await setCachedSlots(
-      cacheKey,
+      cacheId,
       date,
       allSlots.map(s => ({ starts_at: s.starts_at, ends_at: s.ends_at }))
     )

@@ -9,7 +9,12 @@ import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createBooking, getBookingByPaymentIntent } from '@/lib/supabase/bookings'
 import { invalidateSlotsCache } from '@/lib/data'
-import { computeBookingTotal, applyPromoToTotal, incrementPromoUsage } from '@/lib/pricing'
+import {
+  computeBookingTotal,
+  computeBookingDuration,
+  applyPromoToTotal,
+  incrementPromoUsage,
+} from '@/lib/pricing'
 import { sendBookingEmails } from '@/lib/email'
 
 // ---------- Types ----------
@@ -233,6 +238,31 @@ export async function POST(req: NextRequest) {
     const duration = Math.round(
       (new Date(body.endsAt).getTime() - new Date(body.startsAt).getTime()) / 60_000
     )
+
+    // Le créneau réservé doit correspondre à la prestation ET aux options
+    // réellement payées. Sans ce contrôle, un créneau périmé (cache, onglet
+    // resté ouvert, retour arrière) passait en silence : agenda bloqué 75 min
+    // pour 60 min facturées — ou l'inverse, avec chevauchement du rdv suivant.
+    const expectedDuration = await computeBookingDuration({
+      serviceId: body.serviceId,
+      variantId: body.variantId ?? null,
+      extraIds: Array.isArray(body.extraIds) ? body.extraIds : [],
+    })
+    if (duration !== expectedDuration) {
+      console.error(
+        '[confirm] Durée incohérente — créneau:', duration,
+        '/ attendu:', expectedDuration,
+        '/ service:', body.serviceId, '/ variante:', body.variantId,
+        '/ extras:', body.extraIds
+      )
+      return NextResponse.json(
+        {
+          error:
+            'Ce créneau ne correspond plus à votre sélection. Merci de choisir à nouveau un horaire.',
+        },
+        { status: 400 }
+      )
+    }
 
     // ===========================
     // 3. Idempotence : si le wizard est retry, ne pas dupliquer

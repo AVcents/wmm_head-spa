@@ -30,7 +30,10 @@
       "mcp__claude_ai_Supabase__list_projects",
       "Bash(perl -0pi -e ' *)",
       "Bash(npx tsc *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(cp \"/private/tmp/claude-501/-Users-cent-Documents-Agence-Clients-Kalm-Headspa-kalm-headspa-site/fb757736-8384-4706-b2cb-2557602a1e2a/scratchpad/neutraliser-bon.mjs\" ./_tmp-neutraliser-bon.mjs)",
+      "Bash(node ./_tmp-neutraliser-bon.mjs)",
+      "Bash(rm -f ./_tmp-neutraliser-bon.mjs)"
     ],
     "deny": [],
     "ask": []

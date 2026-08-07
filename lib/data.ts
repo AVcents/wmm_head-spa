@@ -718,18 +718,34 @@ export async function setCachedSlots(
   }
 }
 
-/** Invalide le cache pour un service + une date (appelé après booking créé/annulé) */
+/**
+ * Invalide le cache pour un service + une date (appelé après booking créé/annulé).
+ *
+ * Le cache est désormais indexé par `<serviceId>:<durée totale>` : une même
+ * prestation a autant d'entrées que de combinaisons d'extras. Il faut donc
+ * toutes les purger, sinon un créneau fraîchement réservé resterait proposé
+ * aux clients ayant sélectionné d'autres options.
+ */
 export async function invalidateSlotsCache(
   serviceId: string,
   date: string
 ): Promise<void> {
   try {
     const supabase = createAdminClient()
-    await supabase
-      .from('slots_cache')
-      .delete()
-      .eq('service_id', serviceId)
-      .eq('date', date)
+    await Promise.all([
+      // Entrées par durée : "relaxante-courts:60", "relaxante-courts:75", …
+      supabase
+        .from('slots_cache')
+        .delete()
+        .like('service_id', `${serviceId}:%`)
+        .eq('date', date),
+      // Entrées historiques, sans suffixe de durée
+      supabase
+        .from('slots_cache')
+        .delete()
+        .eq('service_id', serviceId)
+        .eq('date', date),
+    ])
   } catch (e) {
     console.error('Error invalidating slots cache:', e)
   }

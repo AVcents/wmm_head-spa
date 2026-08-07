@@ -122,6 +122,71 @@ export async function computeBookingTotal(
   return round2(servicePrice + extrasTotal)
 }
 
+// ─── Durée de base d'une réservation depuis la DB ───────────────
+
+/**
+ * Recalcule la durée réelle d'une réservation (prestation + extras).
+ *
+ * Pendant du prix : le créneau envoyé par le navigateur ne doit pas faire
+ * foi. Sans ce contrôle, une réservation peut bloquer 75 min d'agenda tout
+ * en n'ayant payé que 60 min de prestation (et inversement, sous-bloquer
+ * l'agenda et faire déborder sur le rendez-vous suivant).
+ */
+export async function computeBookingDuration(
+  input: BookingPriceInput
+): Promise<number> {
+  const supabase = createAdminClient()
+
+  let baseDuration: number
+  if (input.variantId) {
+    const { data: variant, error } = await supabase
+      .from('service_variants')
+      .select('duration, service_id')
+      .eq('id', input.variantId)
+      .single()
+    if (error || !variant) {
+      throw new Error('Variante de prestation introuvable')
+    }
+    const v = variant as { duration: number; service_id: string }
+    if (v.service_id !== input.serviceId) {
+      throw new Error('Variante incohérente avec la prestation')
+    }
+    baseDuration = Number(v.duration)
+  } else {
+    const { data: service, error } = await supabase
+      .from('services')
+      .select('duration')
+      .eq('id', input.serviceId)
+      .single()
+    if (error || !service) {
+      throw new Error('Prestation introuvable')
+    }
+    baseDuration = Number((service as { duration: number | null }).duration ?? 0)
+  }
+
+  let extrasDuration = 0
+  const extraIds = [...new Set((input.extraIds ?? []).filter(Boolean))]
+  if (extraIds.length > 0) {
+    const { data: extras, error } = await supabase
+      .from('extras')
+      .select('id, duration')
+      .in('id', extraIds)
+      .eq('is_active', true)
+    if (error) {
+      throw new Error('Erreur de lecture des extras')
+    }
+    if ((extras ?? []).length !== extraIds.length) {
+      throw new Error('Une option sélectionnée n\'est plus disponible')
+    }
+    extrasDuration = (extras ?? []).reduce(
+      (sum, e) => sum + Number((e as { duration: number | null }).duration ?? 0),
+      0
+    )
+  }
+
+  return baseDuration + extrasDuration
+}
+
 // ─── Total d'un bon cadeau depuis la DB ─────────────────────────
 
 /**

@@ -36,6 +36,7 @@ interface ExtraOption {
   id: string
   name: string
   price: number
+  duration: number
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -219,8 +220,17 @@ export default function AdminAgendaPage() {
 
   const selectedLocalService = localServices.find((s) => s.id === modalServiceId)
   const selectedVariant       = selectedLocalService?.service_variants.find((v) => v.id === modalVariantId)
-  const duration              = selectedVariant?.duration ?? selectedLocalService?.duration ?? 60
-  const price                 = selectedVariant?.price ?? selectedLocalService?.price ?? 0
+  const baseDuration          = selectedVariant?.duration ?? selectedLocalService?.duration ?? 60
+  const basePrice             = selectedVariant?.price ?? selectedLocalService?.price ?? 0
+
+  // Les extras rallongent le soin : sans ça, le créneau posé sur l'agenda
+  // gardait la durée de base et les 15 min ajoutées n'apparaissaient pas.
+  const selectedExtras = modalExtras.filter((e) => modalExtraIds.includes(e.id))
+  const extrasDuration = selectedExtras.reduce((sum, e) => sum + Number(e.duration ?? 0), 0)
+  const extrasTotal    = selectedExtras.reduce((sum, e) => sum + Number(e.price ?? 0), 0)
+
+  const duration = baseDuration + extrasDuration
+  const price    = basePrice + extrasTotal
 
   // ── Create booking ─────────────────────────────────────────────────────────
 
@@ -255,6 +265,8 @@ export default function AdminAgendaPage() {
           variantName: selectedVariant?.hair_length_label || undefined,
           duration,
           price,
+          extras: selectedExtras.map((e) => ({ name: e.name, price: Number(e.price) })),
+          extrasTotal,
         }),
       })
 
@@ -606,6 +618,11 @@ export default function AdminAgendaPage() {
                 <div className="px-4 py-3 rounded-xl bg-background border border-border text-sm flex items-center gap-4 flex-wrap">
                   <span className="text-foreground-secondary">⏱ {duration} min</span>
                   <span className="text-foreground-secondary">💰 {price}€</span>
+                  {extrasDuration > 0 && (
+                    <span className="text-foreground-muted text-xs">
+                      (dont +{extrasDuration} min / +{extrasTotal.toFixed(2)}€ d&apos;extras)
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -631,7 +648,12 @@ export default function AdminAgendaPage() {
                           }
                           className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
                         />
-                        <span className="flex-1 text-sm text-foreground">{extra.name}</span>
+                        <span className="flex-1 text-sm text-foreground">
+                          {extra.name}
+                          {Number(extra.duration) > 0 && (
+                            <span className="text-foreground-muted"> · +{Number(extra.duration)} min</span>
+                          )}
+                        </span>
                         <span className="text-sm font-bold text-primary-600">+{Number(extra.price).toFixed(2)}€</span>
                       </label>
                     ))}

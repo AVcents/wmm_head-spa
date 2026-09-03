@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
       variantName,
       duration,
       price,
+      extras,
+      extrasTotal,
     } = body
 
     if (!serviceId || !startsAt || !endsAt) {
@@ -127,6 +129,22 @@ export async function POST(req: NextRequest) {
     if (price !== undefined) bookingData.price = Number(price)
     if (variantName) bookingData.variant_name = String(variantName)
 
+    // Extras (+ durée/prix additionnels) — sinon la réservation créée
+    // depuis l'agenda perdait les options ajoutées par l'admin.
+    const extrasList = Array.isArray(extras)
+      ? (extras as Array<{ name?: unknown; price?: unknown }>).map((e) => ({
+          name: String(e?.name ?? ''),
+          price: Number(e?.price ?? 0),
+        }))
+      : []
+    if (extrasList.length > 0) {
+      bookingData.extras_json = extrasList
+      bookingData.extras_total =
+        extrasTotal !== undefined
+          ? Number(extrasTotal)
+          : extrasList.reduce((sum, e) => sum + e.price, 0)
+    }
+
     const booking = await createBooking(bookingData)
 
     // Invalider le cache slots pour ce service/variant et cette date
@@ -144,6 +162,7 @@ export async function POST(req: NextRequest) {
         date:         startsAtUTC,
         duration:     resolvedDuration,
         price:        Number(price ?? 0),
+        ...(extrasList.length > 0 ? { extras: extrasList } : {}),
         ...(message ? { message: String(message) } : {}),
         bookingId:    booking.id,
       }).catch((err) => {
